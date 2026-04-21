@@ -13,14 +13,13 @@
             font-family: 'Orbitron', sans-serif; user-select: none;
             touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none;
         }
-        #gameCanvas { display: none; width: 100%; height: 100%; } /* Hidden until joined */
+        #gameCanvas { display: none; width: 100%; height: 100%; } 
         body::after {
             content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
             z-index: 2; background-size: 100% 4px, 3px 100%; pointer-events: none;
         }
 
-        /* --- LOGIN SCREEN UI --- */
         #login-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -33,7 +32,7 @@
         }
         .login-box h1 { margin-top: 0; color: #fff; text-shadow: 0 0 10px #00f3ff; }
         input {
-            width: 90%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #444;
+            width: 85%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #444;
             color: #00f3ff; font-family: 'Orbitron', sans-serif; font-size: 1rem; text-align: center;
         }
         input:focus { outline: none; border-color: #ff0055; box-shadow: 0 0 10px #ff0055; }
@@ -45,7 +44,6 @@
         button:hover, button:active { background: #fff; box-shadow: 0 0 15px #00f3ff; }
         #error-msg { color: #ff0055; font-size: 0.9rem; margin-top: 10px; text-shadow: 0 0 5px #ff0055; }
 
-        /* --- GAME UI --- */
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
             pointer-events: none; display: none; flex-direction: column; justify-content: space-between;
@@ -60,6 +58,7 @@
             font-size: clamp(2rem, 5vw, 4rem); color: white; text-align: center;
             text-shadow: 0 0 20px rgba(255,255,255,0.8); opacity: 1; transition: opacity 0.3s;
         }
+        
         .shoot-btn {
             position: absolute; bottom: 10%; right: 5%; width: 80px; height: 80px;
             border-radius: 50%; background: rgba(0, 0, 0, 0.5); color: white;
@@ -84,6 +83,7 @@
     </div>
 
     <canvas id="gameCanvas"></canvas>
+    
     <div id="ui-layer">
         <div class="score-container">
             <div class="p1-score" id="score1">0</div>
@@ -103,7 +103,6 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d', { alpha: false });
         
-        // UI Elements
         const loginScreen = document.getElementById('login-screen');
         const uiLayer = document.getElementById('ui-layer');
         const joinBtn = document.getElementById('joinBtn');
@@ -111,59 +110,51 @@
         const announcement = document.getElementById('announcement');
         const winnerText = document.getElementById('winnerText');
         const shootBtn = document.getElementById('shootBtn');
+        const score1El = document.getElementById('score1');
+        const score2El = document.getElementById('score2');
 
         let width, height;
         let myPlayerNum = null;
-        let gameActive = false; // Prevents moving until both players join
+        let gameActive = false;
+        let score = { p1: 0, p2: 0 };
+        const WIN_SCORE = 5;
+        let shakeTime = 0, shakeMagnitude = 0;
 
-        // --- LOGIN LOGIC ---
+        function shakeScreen(magnitude, time) {
+            shakeMagnitude = magnitude; shakeTime = time;
+        }
+
         joinBtn.addEventListener('click', () => {
             const user = document.getElementById('usernameInput').value.trim();
             const room = document.getElementById('roomInput').value.trim().toUpperCase();
-            
-            if (!user || !room) {
-                errorMsg.innerText = "USERNAME AND ROOM REQUIRED";
-                return;
-            }
-            
+            if (!user || !room) { errorMsg.innerText = "USERNAME AND ROOM REQUIRED"; return; }
             errorMsg.innerText = "CONNECTING...";
             socket.emit('joinRoom', { username: user, room: room });
         });
 
-        // --- MULTIPLAYER NETWORKING ---
         socket.on('init', (num) => {
             myPlayerNum = num;
             if (num === 2) shootBtn.style.borderColor = '#ff0055';
-            
-            // Hide login, show game
             loginScreen.style.display = 'none';
             canvas.style.display = 'block';
             uiLayer.style.display = 'flex';
-            resize();
-            loop(); // Start rendering
+            resize(); loop(); 
         });
 
-        socket.on('roomError', (msg) => {
-            errorMsg.innerText = msg;
-        });
-
+        socket.on('roomError', (msg) => { errorMsg.innerText = msg; });
         socket.on('gameReady', () => {
             winnerText.innerText = 'FIGHT!';
             setTimeout(() => { announcement.style.opacity = 0; }, 1500);
             gameActive = true;
         });
-
         socket.on('opponentLeft', () => {
-            gameActive = false;
-            announcement.style.opacity = 1;
+            gameActive = false; announcement.style.opacity = 1;
             winnerText.innerText = 'OPPONENT DISCONNECTED';
         });
 
         socket.on('opponentMoved', (data) => {
             let opponent = myPlayerNum === 1 ? p2 : p1;
-            opponent.x = data.x;
-            opponent.y = data.y;
-            opponent.angle = data.angle;
+            opponent.x = data.x; opponent.y = data.y; opponent.angle = data.angle;
         });
 
         socket.on('opponentShot', (data) => {
@@ -171,7 +162,6 @@
             bullets.push(new Bullet(data.x, data.y, data.angle, opponent.color, opponent.id));
         });
 
-        // --- CORE GAME ENGINE ---
         function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize);
 
@@ -189,7 +179,7 @@
         window.addEventListener('touchend', handleTouches, {passive: false});
 
         function handleTouches(e) {
-            if(loginScreen.style.display !== 'none') return; // Don't block login typing
+            if(loginScreen.style.display !== 'none') return;
             e.preventDefault();
             touchInput.active = false;
             for (let i = 0; i < e.touches.length; i++) {
@@ -200,7 +190,27 @@
             }
         }
 
+        const particles = [];
         const bullets = [];
+
+        class Particle {
+            constructor(x, y, color, speed, size, life) {
+                this.x = x; this.y = y;
+                this.vx = (Math.random() - 0.5) * speed; this.vy = (Math.random() - 0.5) * speed;
+                this.color = color; this.size = size; this.life = life; this.maxLife = life;
+                this.friction = 0.96;
+            }
+            update() {
+                this.vx *= this.friction; this.vy *= this.friction;
+                this.x += this.vx; this.y += this.vy; this.life--;
+            }
+            draw(ctx) {
+                ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
+                ctx.fillStyle = this.color; ctx.shadowBlur = 10; ctx.shadowColor = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+            }
+        }
 
         class Bullet {
             constructor(x, y, angle, color, owner) {
@@ -212,8 +222,12 @@
             }
             update() {
                 this.x += this.vx; this.y += this.vy; this.life--;
-                if (this.x < 0 || this.x > width) { this.vx *= -1; this.bounces--; }
-                if (this.y < 0 || this.y > height) { this.vy *= -1; this.bounces--; }
+                if (this.x < 0 || this.x > width) { this.vx *= -1; this.bounces--; this.createSparks(); }
+                if (this.y < 0 || this.y > height) { this.vy *= -1; this.bounces--; this.createSparks(); }
+                if (Math.random() > 0.5) particles.push(new Particle(this.x, this.y, this.color, 2, 2, 15));
+            }
+            createSparks() {
+                for(let i = 0; i < 5; i++) particles.push(new Particle(this.x, this.y, this.color, 5, 2, 20));
             }
             draw(ctx) {
                 ctx.fillStyle = '#fff'; ctx.shadowBlur = 15; ctx.shadowColor = this.color;
@@ -226,10 +240,16 @@
             constructor(x, y, color, id) {
                 this.id = id; this.x = x; this.y = y; this.vx = 0; this.vy = 0;
                 this.angle = id === 1 ? 0 : Math.PI; this.color = color;
-                this.size = 15; this.cooldown = 0;
+                this.size = 15; this.cooldown = 0; this.dead = false; this.respawnTimer = 0;
             }
             update() {
-                if (!gameActive) return; // Don't move until player 2 is here
+                if (this.dead) {
+                    this.respawnTimer--;
+                    if (this.respawnTimer <= 0) this.respawn();
+                    return;
+                }
+
+                if (!gameActive) return; 
                 
                 if (this.id === myPlayerNum) {
                     if (touchInput.active) {
@@ -249,21 +269,39 @@
                         bullets.push(new Bullet(bx, by, this.angle, this.color, this.id));
                         socket.emit('shoot', {x: bx, y: by, angle: this.angle});
                         this.cooldown = 15;
+                        this.vx -= Math.cos(this.angle) * 2;
+                        this.vy -= Math.sin(this.angle) * 2;
+                        shakeScreen(3, 5);
                     }
                     if (this.cooldown > 0) this.cooldown--;
 
                     this.vx *= 0.97; this.vy *= 0.97;
                     this.x += this.vx; this.y += this.vy;
                     
-                    if (this.x < this.size) this.x = this.size;
-                    if (this.x > width - this.size) this.x = width - this.size;
-                    if (this.y < this.size) this.y = this.size;
-                    if (this.y > height - this.size) this.y = height - this.size;
+                    if (this.x < this.size) { this.x = this.size; this.vx *= -0.5; }
+                    if (this.x > width - this.size) { this.x = width - this.size; this.vx *= -0.5; }
+                    if (this.y < this.size) { this.y = this.size; this.vy *= -0.5; }
+                    if (this.y > height - this.size) { this.y = height - this.size; this.vy *= -0.5; }
 
                     socket.emit('move', {x: this.x, y: this.y, angle: this.angle});
                 }
             }
+            die() {
+                this.dead = true; this.respawnTimer = 100;
+                shakeScreen(15, 20);
+                for(let i = 0; i < 50; i++) {
+                    particles.push(new Particle(this.x, this.y, this.color, 12, Math.random() * 4 + 2, 40));
+                    particles.push(new Particle(this.x, this.y, '#fff', 8, 2, 30));
+                }
+            }
+            respawn() {
+                this.dead = false; this.vx = 0; this.vy = 0;
+                this.x = this.id === 1 ? width * 0.1 : width * 0.9;
+                this.y = height / 2;
+                this.angle = this.id === 1 ? 0 : Math.PI;
+            }
             draw(ctx) {
+                if (this.dead) return;
                 ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
                 ctx.shadowBlur = 20; ctx.shadowColor = this.color;
                 ctx.strokeStyle = this.color; ctx.lineWidth = 3; ctx.fillStyle = '#111';
@@ -276,6 +314,22 @@
         let p1 = new Ship(100, window.innerHeight / 2, '#00f3ff', 1);
         let p2 = new Ship(window.innerWidth - 100, window.innerHeight / 2, '#ff0055', 2);
 
+        function triggerWin(playerNum) {
+            gameActive = false;
+            winnerText.innerText = `PLAYER ${playerNum} WINS`;
+            winnerText.style.color = playerNum === 1 ? '#00f3ff' : '#ff0055';
+            announcement.style.opacity = 1;
+            
+            setTimeout(() => {
+                score = { p1: 0, p2: 0 };
+                score1El.innerText = '0'; score2El.innerText = '0';
+                p1.respawn(); p2.respawn();
+                bullets.length = 0; particles.length = 0;
+                announcement.style.opacity = 0;
+                gameActive = true;
+            }, 4000);
+        }
+
         function drawGrid() {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)'; ctx.lineWidth = 1;
             ctx.beginPath();
@@ -285,22 +339,55 @@
         }
 
         function loop() {
-            if (!myPlayerNum) return; // Don't loop until joined
-            
-            ctx.fillStyle = 'rgba(5, 5, 8, 0.3)'; ctx.fillRect(0, 0, width, height);
-            drawGrid();
+            if (!myPlayerNum) return; 
 
+            // PHYSICS UPDATE
             p1.update(); p2.update();
             
             for (let i = bullets.length - 1; i >= 0; i--) {
-                bullets[i].update();
-                if (bullets[i].life <= 0 || bullets[i].bounces < 0) { bullets.splice(i, 1); }
+                let b = bullets[i];
+                b.update();
+                if (b.life <= 0 || b.bounces < 0) { bullets.splice(i, 1); continue; }
+
+                // HIT DETECTION
+                if (!p1.dead && b.owner !== 1 && Math.hypot(b.x - p1.x, b.y - p1.y) < p1.size + b.radius) {
+                    p1.die(); score.p2++; score2El.innerText = score.p2; bullets.splice(i, 1);
+                    if (score.p2 >= WIN_SCORE) triggerWin(2);
+                    continue;
+                }
+                if (!p2.dead && b.owner !== 2 && Math.hypot(b.x - p2.x, b.y - p2.y) < p2.size + b.radius) {
+                    p2.die(); score.p1++; score1El.innerText = score.p1; bullets.splice(i, 1);
+                    if (score.p1 >= WIN_SCORE) triggerWin(1);
+                    continue;
+                }
             }
 
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+
+            if (shakeTime > 0) shakeTime--;
+
+            // RENDERING
+            // This line fixes the white/black screen bug!
+            ctx.globalCompositeOperation = 'source-over'; 
+            ctx.fillStyle = 'rgba(5, 5, 8, 0.3)'; ctx.fillRect(0, 0, width, height);
+
+            ctx.save();
+            if (shakeTime > 0) {
+                ctx.translate((Math.random() - 0.5) * shakeMagnitude, (Math.random() - 0.5) * shakeMagnitude);
+            }
+
+            drawGrid();
+
             ctx.globalCompositeOperation = 'lighter';
+            particles.forEach(p => p.draw(ctx));
             bullets.forEach(b => b.draw(ctx));
             p1.draw(ctx);
             p2.draw(ctx);
+
+            ctx.restore();
 
             requestAnimationFrame(loop);
         }
