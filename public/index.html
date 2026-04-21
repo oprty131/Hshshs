@@ -93,7 +93,7 @@
             <div id="winnerText">WAITING FOR PLAYER 2</div>
         </div>
         <div class="shoot-btn" id="shootBtn">SHOOT</div>
-        <div class="controls">DRAG/WASD TO MOVE, BUTTON/SPACE TO SHOOT</div>
+        <div class="controls">USE JOYSTICK/WASD TO MOVE, BUTTON/SPACE TO SHOOT</div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -169,26 +169,66 @@
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        let touchInput = { active: false, x: 0, y: 0 };
+        // --- NEW VIRTUAL JOYSTICK LOGIC ---
+        let joystick = { active: false, id: null, startX: 0, startY: 0, x: 0, y: 0 };
+        const maxJoyRadius = 50;
         let isShooting = false;
 
-        shootBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isShooting = true; });
-        shootBtn.addEventListener('touchend', (e) => { e.preventDefault(); isShooting = false; });
-        window.addEventListener('touchstart', handleTouches, {passive: false});
-        window.addEventListener('touchmove', handleTouches, {passive: false});
-        window.addEventListener('touchend', handleTouches, {passive: false});
+        // Shoot Button Events (Isolated to not interfere with Joystick)
+        shootBtn.addEventListener('touchstart', (e) => { e.stopPropagation(); e.preventDefault(); isShooting = true; }, {passive: false});
+        shootBtn.addEventListener('touchend', (e) => { e.stopPropagation(); e.preventDefault(); isShooting = false; }, {passive: false});
 
-        function handleTouches(e) {
+        // Global Touch Events for Joystick
+        window.addEventListener('touchstart', (e) => {
             if(loginScreen.style.display !== 'none') return;
             e.preventDefault();
-            touchInput.active = false;
-            for (let i = 0; i < e.touches.length; i++) {
-                if (e.touches[i].target === shootBtn) continue;
-                touchInput.active = true;
-                touchInput.x = e.touches[i].clientX;
-                touchInput.y = e.touches[i].clientY;
+            for(let i = 0; i < e.changedTouches.length; i++) {
+                let t = e.changedTouches[i];
+                // Activate joystick only if touched on the left half of the screen
+                if(!joystick.active && t.clientX < width / 2) {
+                    joystick.active = true;
+                    joystick.id = t.identifier;
+                    joystick.startX = t.clientX;
+                    joystick.startY = t.clientY;
+                    joystick.x = t.clientX;
+                    joystick.y = t.clientY;
+                }
             }
-        }
+        }, {passive: false});
+
+        window.addEventListener('touchmove', (e) => {
+            if(loginScreen.style.display !== 'none') return;
+            e.preventDefault();
+            for(let i = 0; i < e.changedTouches.length; i++) {
+                let t = e.changedTouches[i];
+                if(joystick.active && t.identifier === joystick.id) {
+                    let dx = t.clientX - joystick.startX;
+                    let dy = t.clientY - joystick.startY;
+                    let dist = Math.hypot(dx, dy);
+                    
+                    // Constrain joystick visually to max radius
+                    if(dist > maxJoyRadius) {
+                        dx = (dx / dist) * maxJoyRadius;
+                        dy = (dy / dist) * maxJoyRadius;
+                    }
+                    joystick.x = joystick.startX + dx;
+                    joystick.y = joystick.startY + dy;
+                }
+            }
+        }, {passive: false});
+
+        const handleTouchEnd = (e) => {
+            for(let i = 0; i < e.changedTouches.length; i++) {
+                let t = e.changedTouches[i];
+                if(joystick.active && t.identifier === joystick.id) {
+                    joystick.active = false;
+                    joystick.id = null;
+                }
+            }
+        };
+        window.addEventListener('touchend', handleTouchEnd);
+        window.addEventListener('touchcancel', handleTouchEnd);
+
 
         const particles = [];
         const bullets = [];
@@ -252,14 +292,26 @@
                 if (!gameActive) return; 
                 
                 if (this.id === myPlayerNum) {
-                    if (touchInput.active) {
-                        this.angle = Math.atan2(touchInput.y - this.y, touchInput.x - this.x);
-                        this.vx += Math.cos(this.angle) * 0.4; this.vy += Math.sin(this.angle) * 0.4;
+                    
+                    // JOYSTICK PHYSICS
+                    if (joystick.active) {
+                        let dx = joystick.x - joystick.startX;
+                        let dy = joystick.y - joystick.startY;
+                        let dist = Math.hypot(dx, dy);
+                        
+                        if (dist > 5) { // Small deadzone so resting thumb doesn't jitter
+                            this.angle = Math.atan2(dy, dx);
+                            // Thrust power based on how far joystick is pulled (max 0.45)
+                            let power = (dist / maxJoyRadius) * 0.45; 
+                            this.vx += Math.cos(this.angle) * power; 
+                            this.vy += Math.sin(this.angle) * power;
+                        }
                     } else {
+                        // KEYBOARD FALLBACK
                         if (keys['KeyA']) this.angle -= 0.08;
                         if (keys['KeyD']) this.angle += 0.08;
                         if (keys['KeyW']) {
-                            this.vx += Math.cos(this.angle) * 0.4; this.vy += Math.sin(this.angle) * 0.4;
+                            this.vx += Math.cos(this.angle) * 0.45; this.vy += Math.sin(this.angle) * 0.45;
                         }
                     }
 
@@ -338,6 +390,32 @@
             ctx.stroke();
         }
 
+        // --- DRAW VIRTUAL JOYSTICK ---
+        function drawJoystick() {
+            if (!joystick.active) return;
+            
+            ctx.save();
+            ctx.globalCompositeOperation = 'source-over'; // Don't blend neon into white blob
+            
+            // Set color based on player
+            let joyColor = myPlayerNum === 1 ? 'rgba(0, 243, 255, ' : 'rgba(255, 0, 85, ';
+
+            // Draw outer circle
+            ctx.strokeStyle = joyColor + '0.3)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(joystick.startX, joystick.startY, maxJoyRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Draw inner knob
+            ctx.fillStyle = joyColor + '0.7)';
+            ctx.beginPath();
+            ctx.arc(joystick.x, joystick.y, 20, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
         function loop() {
             if (!myPlayerNum) return; 
 
@@ -370,7 +448,6 @@
             if (shakeTime > 0) shakeTime--;
 
             // RENDERING
-            // This line fixes the white/black screen bug!
             ctx.globalCompositeOperation = 'source-over'; 
             ctx.fillStyle = 'rgba(5, 5, 8, 0.3)'; ctx.fillRect(0, 0, width, height);
 
@@ -380,6 +457,7 @@
             }
 
             drawGrid();
+            drawJoystick();
 
             ctx.globalCompositeOperation = 'lighter';
             particles.forEach(p => p.draw(ctx));
