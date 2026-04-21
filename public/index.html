@@ -3,352 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lego Invincible Universe</title>
+    <title>Lego Invincible Battlegrounds</title>
+    
+    <script src="/socket.io/socket.io.js"></script>
+
     <style>
-        /* Base Reset & Typography */
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
+        /* Base Reset */
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; background: #0f172a; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
 
-        body {
-            background: #0f172a;
-            color: #f8fafc;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding-top: 20px;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            text-transform: uppercase;
-            font-weight: 900;
-            margin: 0;
-            color: #fcd34d;
-            text-shadow: 4px 4px 0px #b91c1c, 0px 8px 0px #000;
-            letter-spacing: 2px;
-        }
-
-        /* Responsive Grid for Mobile & Desktop */
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 25px;
-            width: 100%;
-            max-width: 1000px;
-        }
-
-        /* 3D Roblox/Lego Style Card */
-        .card {
-            background: #1e293b;
-            border-radius: 12px;
-            padding: 25px 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
+        /* The Game Arena */
+        #arena {
+            flex-grow: 1;
             position: relative;
-            user-select: none;
-            
-            /* The Plastic Brick Look */
-            border: 3px solid #020617;
-            box-shadow: 
-                inset -4px -4px 0px rgba(0,0,0,0.4), 
-                inset 4px 4px 0px rgba(255,255,255,0.1), 
-                0 10px 0px #020617;
-            transition: transform 0.1s, box-shadow 0.1s;
+            background: radial-gradient(circle, #1e293b 0%, #020617 100%);
+            overflow: hidden;
+            border-bottom: 4px solid #334155;
         }
 
-        /* Mobile Tap / Click Animation */
-        .card:active {
-            transform: translateY(10px);
-            box-shadow: 
-                inset -4px -4px 0px rgba(0,0,0,0.4), 
-                inset 4px 4px 0px rgba(255,255,255,0.1), 
-                0 0px 0px #020617;
+        /* Player Container (Absolute Positioning) */
+        .player {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Smooth movement interpolation */
+            transition: transform 0.05s linear;
+            transform: translate(-50%, -50%); /* Center origin */
+        }
+
+        .player-name {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #fcd34d;
+            text-shadow: 1px 1px 0 #000;
+            margin-bottom: 5px;
+            text-transform: uppercase;
         }
 
         /* Pure CSS Minifigure Design */
-        .minifig {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 20px;
-            filter: drop-shadow(0 4px 2px rgba(0,0,0,0.5));
-        }
-
-        .head {
-            width: 38px;
-            height: 38px;
-            border-radius: 8px;
-            border: 2px solid #000;
-            margin-bottom: 2px;
-            position: relative;
-        }
-        
-        /* Lego head stud */
-        .head::before {
-            content: '';
-            position: absolute;
-            top: -6px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 16px;
-            height: 4px;
-            border: 2px solid #000;
-            border-bottom: none;
-            border-radius: 3px 3px 0 0;
-            background: inherit;
-        }
-
-        .torso-wrapper {
-            position: relative;
-            display: flex;
-            justify-content: center;
-        }
-
-        .torso {
-            width: 50px;
-            height: 45px;
-            border-radius: 4px 4px 0 0;
-            border: 2px solid #000;
-            z-index: 2;
-        }
-
-        .arm {
-            width: 14px;
-            height: 36px;
-            border: 2px solid #000;
-            border-radius: 10px;
-            position: absolute;
-            top: 4px;
-            z-index: 1;
-        }
-
-        .arm.left { right: 100%; margin-right: -6px; transform: rotate(15deg); }
-        .arm.right { left: 100%; margin-left: -6px; transform: rotate(-15deg); }
-
-        .legs {
-            width: 50px;
-            height: 30px;
-            border: 2px solid #000;
-            border-top: none;
-            display: flex;
-        }
-
-        .leg {
-            width: 50%;
-            height: 100%;
-            border-right: 1px solid #000;
-        }
+        .head { width: 30px; height: 30px; border-radius: 6px; border: 2px solid #000; margin-bottom: 2px; position: relative; background: #fcd34d; }
+        .head::before { content: ''; position: absolute; top: -5px; left: 50%; transform: translateX(-50%); width: 12px; height: 3px; border: 2px solid #000; border-bottom: none; border-radius: 2px 2px 0 0; background: inherit; }
+        .torso-wrapper { position: relative; display: flex; justify-content: center; }
+        .torso { width: 40px; height: 35px; border-radius: 3px 3px 0 0; border: 2px solid #000; z-index: 2; background: #3b82f6; }
+        .arm { width: 12px; height: 28px; border: 2px solid #000; border-radius: 10px; position: absolute; top: 3px; z-index: 1; background: #eab308; }
+        .arm.left { right: 100%; margin-right: -4px; transform: rotate(15deg); }
+        .arm.right { left: 100%; margin-left: -4px; transform: rotate(-15deg); }
+        .legs { width: 40px; height: 25px; border: 2px solid #000; border-top: none; display: flex; }
+        .leg { width: 50%; height: 100%; border-right: 1px solid #000; background: #3b82f6; }
         .leg:last-child { border-right: none; border-left: 1px solid #000; }
 
-        .char-name {
-            font-weight: 800;
-            font-size: 1.1rem;
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #cbd5e1;
-        }
-
-        /* Modern Polished Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(4px);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            padding: 20px;
-        }
-
-        .modal-content {
+        /* Mobile D-Pad Controls */
+        #controls {
+            height: 200px;
             background: #1e293b;
-            color: #f8fafc;
-            padding: 30px;
-            border-radius: 16px;
-            text-align: center;
-            max-width: 400px;
-            width: 100%;
-            border: 4px solid #334155;
-            box-shadow: 
-                inset -6px -6px 0px rgba(0,0,0,0.3), 
-                0 25px 50px -12px rgba(0,0,0,0.5);
-            position: relative;
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 10px;
+            padding: 20px;
+            justify-items: center;
+            align-items: center;
+            max-width: 300px;
+            margin: 0 auto;
         }
 
-        @keyframes popIn {
-            0% { transform: scale(0.8); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        .close-btn {
-            position: absolute;
-            top: -15px;
-            right: -15px;
-            background: #ef4444;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            font-size: 1.5rem;
-            font-weight: bold;
+        .btn {
+            background: #334155;
+            border: 3px solid #020617;
+            border-radius: 12px;
+            width: 60px;
+            height: 60px;
             display: flex;
             justify-content: center;
             align-items: center;
-            cursor: pointer;
-            border: 3px solid #020617;
-            box-shadow: 0 4px 0px #020617;
-        }
-        
-        .close-btn:active {
-            transform: translateY(4px);
-            box-shadow: 0 0px 0px #020617;
-        }
-
-        .modal-title {
-            font-size: 2.2rem;
-            margin-top: 10px;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            font-weight: 900;
-            color: #fcd34d;
-        }
-
-        .modal-desc {
-            font-size: 1.1rem;
-            line-height: 1.6;
+            font-size: 1.5rem;
             color: #94a3b8;
+            box-shadow: inset -3px -3px 0px rgba(0,0,0,0.5), 0 6px 0px #020617;
+            cursor: pointer;
         }
+
+        .btn:active {
+            transform: translateY(6px);
+            box-shadow: inset -3px -3px 0px rgba(0,0,0,0.5), 0 0px 0px #020617;
+            background: #475569;
+        }
+
+        #up { grid-column: 2; grid-row: 1; }
+        #left { grid-column: 1; grid-row: 2; }
+        #down { grid-column: 2; grid-row: 3; }
+        #right { grid-column: 3; grid-row: 2; }
+
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>Blocks of Earth</h1>
-    </div>
+    <div id="arena"></div>
 
-    <div class="grid-container" id="roster"></div>
-
-    <div class="modal" id="charModal">
-        <div class="modal-content">
-            <div class="close-btn" onclick="closeModal()">X</div>
-            <div class="minifig" id="modalMinifig" style="transform: scale(1.5); margin-bottom: 40px; margin-top: 20px;"></div>
-            <h2 class="modal-title" id="modalTitle">Name</h2>
-            <p class="modal-desc" id="modalDesc">Description goes here.</p>
-        </div>
+    <div id="controls">
+        <div class="btn" id="up">▲</div>
+        <div class="btn" id="left">◀</div>
+        <div class="btn" id="down">▼</div>
+        <div class="btn" id="right">▶</div>
     </div>
 
     <script>
-        // Character Database (Expanded Roster)
-        const characters = [
-            {
-                name: "Invincible",
-                desc: "Mark Grayson. Viltrumite-Human hybrid. Tries his best to protect Earth, but usually gets beaten up first.",
-                colors: { head: "#fcd34d", torso: "#3b82f6", arm: "#eab308", legs: "#3b82f6" }
-            },
-            {
-                name: "Omni-Man",
-                desc: "Nolan Grayson. Earth's greatest protector... until he wasn't. Loves his wife like a pet.",
-                colors: { head: "#fcd34d", torso: "#ef4444", arm: "#ef4444", legs: "#ef4444" }
-            },
-            {
-                name: "Atom Eve",
-                desc: "Samantha Eve Wilkins. Can manipulate matter at the subatomic level. Refuses to wear standard superhero spandex.",
-                colors: { head: "#fcd34d", torso: "#ec4899", arm: "#fbcfe8", legs: "#ec4899" }
-            },
-            {
-                name: "Tech Jacket",
-                desc: "Zack Thompson. Bonded with a Geldarian combat armor. Basically a walking tank from space.",
-                colors: { head: "#94a3b8", torso: "#cbd5e1", arm: "#3b82f6", legs: "#cbd5e1" }
-            },
-            {
-                name: "Thragg",
-                desc: "Grand Regent of the Viltrumite Empire. The strongest of them all. Has a serious temper problem.",
-                colors: { head: "#fcd34d", torso: "#ffffff", arm: "#ef4444", legs: "#ffffff" }
-            },
-            {
-                name: "Allen",
-                desc: "Allen the Alien. Champion Evaluation Officer for the Coalition of Planets. Gets stronger every time he gets beaten to a pulp.",
-                colors: { head: "#f97316", torso: "#a855f7", arm: "#f97316", legs: "#a855f7" }
-            },
-            {
-                name: "Battle Beast",
-                desc: "Thokk. Roams the universe searching for worthy adversaries. Will fight literally anyone.",
-                colors: { head: "#8b5cf6", torso: "#b45309", arm: "#d97706", legs: "#b45309" }
-            }
-        ];
+        const socket = io();
+        const arena = document.getElementById('arena');
+        const playersData = {}; // Stores DOM elements
 
-        const rosterContainer = document.getElementById('roster');
+        // --- MULTIPLAYER NETWORKING ---
 
-        // Generate Minifigure HTML
-        function createMinifig(colors) {
-            return `
-                <div class="head" style="background: ${colors.head};"></div>
-                <div class="torso-wrapper">
-                    <div class="arm left" style="background: ${colors.arm};"></div>
-                    <div class="torso" style="background: ${colors.torso};"></div>
-                    <div class="arm right" style="background: ${colors.arm};"></div>
-                </div>
-                <div class="legs">
-                    <div class="leg" style="background: ${colors.legs};"></div>
-                    <div class="leg" style="background: ${colors.legs};"></div>
-                </div>
-            `;
-        }
-
-        // Render Cards
-        characters.forEach((char, index) => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.onclick = () => openModal(index);
-            
-            card.innerHTML = `
-                <div class="minifig">
-                    ${createMinifig(char.colors)}
-                </div>
-                <div class="char-name">${char.name}</div>
-            `;
-            rosterContainer.appendChild(card);
+        // When we first connect, load all existing players
+        socket.on('currentPlayers', (players) => {
+            Object.keys(players).forEach(id => {
+                addPlayerToArena(players[id]);
+            });
         });
 
-        // Modal Logic
-        const modal = document.getElementById('charModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalDesc = document.getElementById('modalDesc');
-        const modalMinifig = document.getElementById('modalMinifig');
+        // When a new player joins, add them
+        socket.on('newPlayer', (playerInfo) => {
+            addPlayerToArena(playerInfo);
+        });
 
-        function openModal(index) {
-            const char = characters[index];
-            modalTitle.innerText = char.name;
-            modalDesc.innerText = char.desc;
-            modalMinifig.innerHTML = createMinifig(char.colors);
-            modal.style.display = 'flex';
-        }
-
-        function closeModal() {
-            modal.style.display = 'none';
-        }
-
-        // Close modal when clicking outside of it
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                closeModal();
+        // When a player moves, update their position on screen
+        socket.on('playerMoved', (playerInfo) => {
+            if (playersData[playerInfo.id]) {
+                const el = playersData[playerInfo.id];
+                el.style.transform = `translate(calc(${playerInfo.x}px - 50%), calc(${playerInfo.y}px - 50%))`;
             }
+        });
+
+        // When a player leaves, remove their element
+        socket.on('playerDisconnected', (playerId) => {
+            if (playersData[playerId]) {
+                playersData[playerId].remove();
+                delete playersData[playerId];
+            }
+        });
+
+        // --- RENDERING ---
+
+        function addPlayerToArena(playerInfo) {
+            const playerEl = document.createElement('div');
+            playerEl.className = 'player';
+            playerEl.id = playerInfo.id;
+            
+            // Render the Lego character
+            playerEl.innerHTML = `
+                <div class="player-name">${playerInfo.id === socket.id ? 'YOU' : 'Enemy'}</div>
+                <div class="head"></div>
+                <div class="torso-wrapper">
+                    <div class="arm left"></div>
+                    <div class="torso"></div>
+                    <div class="arm right"></div>
+                </div>
+                <div class="legs">
+                    <div class="leg"></div>
+                    <div class="leg"></div>
+                </div>
+            `;
+            
+            playerEl.style.transform = `translate(calc(${playerInfo.x}px - 50%), calc(${playerInfo.y}px - 50%))`;
+            arena.appendChild(playerEl);
+            playersData[playerInfo.id] = playerEl;
         }
+
+        // --- MOVEMENT CONTROLS ---
+
+        let myX = window.innerWidth / 2; // Start in middle of screen
+        let myY = 150; 
+        const speed = 10;
+        
+        const keys = { w: false, a: false, s: false, d: false };
+
+        // Keyboard support for desktop testing
+        window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+
+        // Mobile D-Pad Support (Touch & Mouse)
+        const bindButton = (id, key) => {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[key] = false; });
+            btn.addEventListener('mousedown', () => keys[key] = true);
+            btn.addEventListener('mouseup', () => keys[key] = false);
+            btn.addEventListener('mouseleave', () => keys[key] = false);
+        };
+
+        bindButton('up', 'w');
+        bindButton('down', 's');
+        bindButton('left', 'a');
+        bindButton('right', 'd');
+
+        // Game Loop: Send movement to server 60 times a second
+        setInterval(() => {
+            let moved = false;
+            if (keys.w) { myY -= speed; moved = true; }
+            if (keys.s) { myY += speed; moved = true; }
+            if (keys.a) { myX -= speed; moved = true; }
+            if (keys.d) { myX += speed; moved = true; }
+
+            if (moved && playersData[socket.id]) {
+                // Update my own screen instantly (Client-Side Prediction)
+                const myEl = playersData[socket.id];
+                myEl.style.transform = `translate(calc(${myX}px - 50%), calc(${myY}px - 50%))`;
+                
+                // Tell the server where I went
+                socket.emit('playerMovement', { x: myX, y: myY });
+            }
+        }, 1000 / 60);
+
     </script>
 </body>
 </html>
