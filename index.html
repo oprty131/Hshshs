@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEON STRIKE - Online</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #050508; overflow: hidden;
+            font-family: 'Orbitron', sans-serif; user-select: none;
+            touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none;
+        }
+        #gameCanvas { display: block; width: 100%; height: 100%; }
+        body::after {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2; background-size: 100% 4px, 3px 100%; pointer-events: none;
+        }
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .score-container { display: flex; justify-content: space-between; padding: 2rem 5vw; font-size: clamp(3rem, 8vw, 4rem); font-weight: 900; }
+        .p1-score { color: #00f3ff; text-shadow: 0 0 10px #00f3ff, 0 0 20px #00f3ff; }
+        .p2-score { color: #ff0055; text-shadow: 0 0 10px #ff0055, 0 0 20px #ff0055; }
+        .controls { display: flex; justify-content: space-between; padding: 1rem 3vw; color: rgba(255, 255, 255, 0.4); font-size: clamp(0.6rem, 2vw, 0.9rem); letter-spacing: 1px; text-align: center; }
+        .controls div { width: 100%; }
+        #announcement {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: clamp(2.5rem, 6vw, 5rem); color: white; text-align: center;
+            text-transform: uppercase; text-shadow: 0 0 20px rgba(255,255,255,0.8); opacity: 0; transition: opacity 0.3s ease;
+        }
+        #announcement.visible { opacity: 1; }
+        
+        .shoot-btn {
+            position: absolute; bottom: 10%; right: 5%; width: 80px; height: 80px;
+            border-radius: 50%; background: rgba(0, 0, 0, 0.5); color: white;
+            font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900;
+            border: 2px solid #00f3ff; box-shadow: 0 0 15px #00f3ff;
+            z-index: 20; pointer-events: auto; display: flex; align-items: center; justify-content: center;
+        }
+        .shoot-btn:active { background: rgba(255, 255, 255, 0.2); }
+        @media (hover: hover) and (pointer: fine) { .shoot-btn { display: none; } }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <div class="score-container">
+            <div class="p1-score" id="score1">0</div>
+            <div class="p2-score" id="score2">0</div>
+        </div>
+        <div id="announcement">
+            <div id="winnerText">WAITING FOR PLAYER 2</div>
+        </div>
+        
+        <div class="shoot-btn" id="shootBtn">SHOOT</div>
+
+        <div class="controls">
+            <div>DRAG/WASD TO MOVE, BUTTON/SPACE TO SHOOT</div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        
+        const score1El = document.getElementById('score1');
+        const score2El = document.getElementById('score2');
+        const announcement = document.getElementById('announcement');
+        const winnerText = document.getElementById('winnerText');
+        const shootBtn = document.getElementById('shootBtn');
+
+        let width, height;
+        let myPlayerNum = null;
+        let score = { p1: 0, p2: 0 };
+        const WIN_SCORE = 5;
+
+        // MULTIPLAYER NETWORKING
+        socket.on('init', (num) => {
+            myPlayerNum = num;
+            if (num === 2) shootBtn.style.borderColor = '#ff0055';
+            announcement.classList.remove('visible');
+        });
+
+        socket.on('serverFull', () => {
+            winnerText.innerText = 'SERVER FULL';
+            announcement.classList.add('visible');
+        });
+
+        socket.on('opponentMoved', (data) => {
+            let opponent = myPlayerNum === 1 ? p2 : p1;
+            opponent.x = data.x;
+            opponent.y = data.y;
+            opponent.angle = data.angle;
+        });
+
+        socket.on('opponentShot', (data) => {
+            let opponent = myPlayerNum === 1 ? p2 : p1;
+            bullets.push(new Bullet(data.x, data.y, data.angle, opponent.color, opponent.id));
+        });
+
+        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        // Inputs
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        let touchInput = { active: false, x: 0, y: 0 };
+        let isShooting = false;
+
+        shootBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isShooting = true; });
+        shootBtn.addEventListener('touchend', (e) => { e.preventDefault(); isShooting = false; });
+
+        window.addEventListener('touchstart', handleTouches, {passive: false});
+        window.addEventListener('touchmove', handleTouches, {passive: false});
+        window.addEventListener('touchend', handleTouches, {passive: false});
+
+        function handleTouches(e) {
+            e.preventDefault();
+            touchInput.active = false;
+            for (let i = 0; i < e.touches.length; i++) {
+                if (e.touches[i].target === shootBtn) continue;
+                touchInput.active = true;
+                touchInput.x = e.touches[i].clientX;
+                touchInput.y = e.touches[i].clientY;
+            }
+        }
+
+        const particles = [];
+        const bullets = [];
+
+        class Bullet {
+            constructor(x, y, angle, color, owner) {
+                this.x = x; this.y = y;
+                const speed = 15;
+                this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+                this.color = color; this.owner = owner;
+                this.radius = 4; this.bounces = 1; this.life = 120;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy; this.life--;
+                if (this.x < 0 || this.x > width) { this.vx *= -1; this.bounces--; }
+                if (this.y < 0 || this.y > height) { this.vy *= -1; this.bounces--; }
+            }
+            draw(ctx) {
+                ctx.fillStyle = '#fff'; ctx.shadowBlur = 15; ctx.shadowColor = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Ship {
+            constructor(x, y, color, id) {
+                this.id = id; this.x = x; this.y = y; this.vx = 0; this.vy = 0;
+                this.angle = id === 1 ? 0 : Math.PI; this.color = color;
+                this.size = 15; this.cooldown = 0;
+            }
+            update() {
+                // ONLY calculate physics if this ship belongs to the player
+                if (this.id === myPlayerNum) {
+                    if (touchInput.active) {
+                        this.angle = Math.atan2(touchInput.y - this.y, touchInput.x - this.x);
+                        this.vx += Math.cos(this.angle) * 0.4; this.vy += Math.sin(this.angle) * 0.4;
+                    } else {
+                        if (keys['KeyA']) this.angle -= 0.08;
+                        if (keys['KeyD']) this.angle += 0.08;
+                        if (keys['KeyW']) {
+                            this.vx += Math.cos(this.angle) * 0.4; this.vy += Math.sin(this.angle) * 0.4;
+                        }
+                    }
+
+                    if ((isShooting || keys['Space']) && this.cooldown <= 0) {
+                        let bx = this.x + Math.cos(this.angle) * (this.size + 5);
+                        let by = this.y + Math.sin(this.angle) * (this.size + 5);
+                        bullets.push(new Bullet(bx, by, this.angle, this.color, this.id));
+                        socket.emit('shoot', {x: bx, y: by, angle: this.angle}); // Send to server
+                        this.cooldown = 15;
+                    }
+                    if (this.cooldown > 0) this.cooldown--;
+
+                    this.vx *= 0.97; this.vy *= 0.97;
+                    this.x += this.vx; this.y += this.vy;
+                    
+                    // Keep in bounds
+                    if (this.x < this.size) this.x = this.size;
+                    if (this.x > width - this.size) this.x = width - this.size;
+                    if (this.y < this.size) this.y = this.size;
+                    if (this.y > height - this.size) this.y = height - this.size;
+
+                    // Send position to server 60 times a second
+                    socket.emit('move', {x: this.x, y: this.y, angle: this.angle});
+                }
+            }
+            draw(ctx) {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+                ctx.shadowBlur = 20; ctx.shadowColor = this.color;
+                ctx.strokeStyle = this.color; ctx.lineWidth = 3; ctx.fillStyle = '#111';
+                ctx.beginPath(); ctx.moveTo(this.size, 0); ctx.lineTo(-this.size, -this.size * 0.8); 
+                ctx.lineTo(-this.size * 0.4, 0); ctx.lineTo(-this.size, this.size * 0.8); 
+                ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+            }
+        }
+
+        let p1 = new Ship(100, height / 2, '#00f3ff', 1);
+        let p2 = new Ship(width - 100, height / 2, '#ff0055', 2);
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)'; ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let x = 0; x < width; x += 50) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+            for (let y = 0; y < height; y += 50) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
+            ctx.stroke();
+        }
+
+        function loop() {
+            ctx.fillStyle = 'rgba(5, 5, 8, 0.3)'; ctx.fillRect(0, 0, width, height);
+            drawGrid();
+
+            if (myPlayerNum !== null) {
+                p1.update(); p2.update();
+                
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    bullets[i].update();
+                    if (bullets[i].life <= 0 || bullets[i].bounces < 0) { bullets.splice(i, 1); }
+                }
+
+                ctx.globalCompositeOperation = 'lighter';
+                bullets.forEach(b => b.draw(ctx));
+                p1.draw(ctx);
+                p2.draw(ctx);
+            }
+
+            requestAnimationFrame(loop);
+        }
+        loop();
+    </script>
+</body>
+</html>
