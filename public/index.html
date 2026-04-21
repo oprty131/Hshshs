@@ -2,349 +2,576 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invincible Battlegrounds</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>INVINCIBLE: BATTLEGROUNDS</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #0f172a; color: white; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        #gameCanvas { display: none; background: #1e293b; }
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #050505; overflow: hidden;
+            font-family: 'Montserrat', sans-serif; user-select: none;
+        }
+        #gameCanvas { display: none; width: 100%; height: 100%; } 
+
+        /* Modern UI Styling */
+        #login-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 50; background: radial-gradient(circle, #1a1a2e 0%, #000000 100%);
+        }
+        .login-box {
+            background: rgba(20, 20, 30, 0.6); padding: 3rem; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1); text-align: center; width: 80%; max-width: 450px;
+            backdrop-filter: blur(10px); box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        .login-box h1 { color: #fff; font-weight: 900; margin-bottom: 30px; letter-spacing: 2px; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        input, select {
+            width: 90%; padding: 15px; margin: 10px 0; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);
+            color: #fff; font-family: 'Montserrat', sans-serif; font-weight: bold; text-align: center;
+            border-radius: 6px; outline: none; transition: 0.3s;
+        }
+        input:focus, select:focus { border-color: #3498db; box-shadow: 0 0 10px rgba(52,152,219,0.5); }
+        button {
+            width: 100%; padding: 15px; margin-top: 20px; background: #fff; color: #000;
+            font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 1.2rem;
+            border: none; border-radius: 6px; cursor: pointer; text-transform: uppercase;
+            transition: 0.2s;
+        }
+        button:hover { background: #3498db; color: #fff; transform: translateY(-2px); }
+
+        /* Battlegrounds UI */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: none; }
         
-        /* UI Overlays */
-        #uiLayer { display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 600px; text-align: center; pointer-events: none; }
-        .hud-bar { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .move-box { width: 60px; height: 60px; background: rgba(0,0,0,0.6); border: 2px solid #334155; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-weight: bold; position: relative; }
-        .cooldown-overlay { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(239, 68, 68, 0.5); height: 0%; transition: height 0.1s linear; }
+        #leaderboard {
+            position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+            padding: 15px; color: white; font-weight: bold; min-width: 180px; text-align: right; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        #hotbar {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px;
+        }
+        .slot {
+            width: 70px; height: 70px; background: rgba(0,0,0,0.6); border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 8px; display: flex; align-items: center; justify-content: center; text-align: center;
+            color: white; font-weight: bold; position: relative; overflow: hidden; backdrop-filter: blur(5px);
+        }
+        .slot .key { position: absolute; top: 5px; left: 8px; font-size: 12px; color: #aaa; }
+        .slot .name { font-size: 10px; z-index: 2; text-shadow: 1px 1px 2px #000; padding-top: 15px; }
+        .slot .cd-overlay { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(231, 76, 60, 0.7); height: 0%; z-index: 1; transition: height 0.1s linear; }
+
+        #health-bar-container {
+            position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%);
+            width: 500px; height: 25px; background: rgba(0,0,0,0.8); border: 2px solid #333; border-radius: 4px; overflow: hidden;
+        }
+        #health-bar-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #27ae60, #2ecc71); transition: width 0.15s ease-out; }
+        #health-text { position: absolute; width: 100%; text-align: center; line-height: 25px; color: white; font-weight: 900; font-size: 14px; text-shadow: 1px 1px 0 #000; }
+
+        #controls-hint {
+            position: absolute; bottom: 155px; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,0.7); font-size: 14px; font-weight: bold; text-shadow: 1px 1px 0 #000; text-transform: uppercase; letter-spacing: 1px;
+        }
         
-        /* Character Select Screen */
-        #menu { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        .char-btn { background: #334155; border: 3px solid #000; color: white; padding: 15px 30px; margin: 10px; font-size: 1.5rem; cursor: pointer; border-radius: 8px; font-weight: bold; text-transform: uppercase; width: 300px; transition: transform 0.1s;}
-        .char-btn:active { transform: translateY(4px); }
-        .char-btn.mark { border-color: #3b82f6; }
-        .char-btn.nolan { border-color: #ef4444; }
-        .char-btn.eve { border-color: #ec4899; }
-        input { padding: 10px; font-size: 1.2rem; margin-bottom: 20px; text-align: center; }
+        #death-screen {
+            position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(100,0,0,0.5);
+            display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 20;
+            backdrop-filter: blur(5px);
+        }
+        #death-screen h1 { color: #fff; font-size: 4rem; margin: 0; font-weight: 900; text-shadow: 0 0 20px #f00; }
+        #respawn-btn { padding: 15px 40px; font-size: 1.5rem; margin-top: 20px; width: auto; pointer-events: auto; }
     </style>
 </head>
 <body>
 
-    <div id="menu">
-        <h1 style="color: #fcd34d; text-shadow: 3px 3px 0 #b91c1c;">INVINCIBLE BATTLEGROUNDS</h1>
-        <input type="text" id="usernameInput" placeholder="Enter Username" maxlength="10">
-        <button class="char-btn mark" onclick="joinGame('Invincible')">Invincible</button>
-        <button class="char-btn nolan" onclick="joinGame('Omni-Man')">Omni-Man</button>
-        <button class="char-btn eve" onclick="joinGame('Atom Eve')">Atom Eve</button>
+    <div id="login-screen">
+        <div class="login-box">
+            <h1>EARTH DEFENDERS</h1>
+            <input type="text" id="usernameInput" placeholder="USERNAME" maxlength="12">
+            <input type="text" id="roomInput" placeholder="SERVER CODE (Default: MAIN)" maxlength="10">
+            <select id="charSelect">
+                <option value="invincible">Mark (Brawler)</option>
+                <option value="omniman">Omni-Man (Heavy)</option>
+                <option value="atomeve">Atom Eve (Ranged/AoE)</option>
+                <option value="thragg">Thragg (Lethal Rush)</option>
+                <option value="battlebeast">Battle Beast (Bruiser)</option>
+                <option value="techjacket">Tech Jacket (Zoner)</option>
+                <option value="conquest">Conquest (Tank/Grab)</option>
+                <option value="allen">Allen (Cosmic Brawler)</option>
+            </select>
+            <button id="joinBtn">DEPLOY</button>
+        </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
     
-    <div id="uiLayer">
-        <div style="font-size: 20px; margin-bottom: 5px;">Controls: WASD (Move) | Click (M1) | Q (Dash) | 1, 2, 3, 4 (Abilities)</div>
-        <div class="hud-bar" id="movesHud">
-            </div>
+    <div id="ui-layer">
+        <div id="leaderboard"><div id="lb-list">KILLS<hr></div></div>
+        <div id="controls-hint">LMB: M1 Combo | Q: Dash</div>
+        <div id="health-bar-container">
+            <div id="health-bar-fill"></div>
+            <div id="health-text">100 / 100</div>
+        </div>
+        <div id="hotbar">
+            <div class="slot"><div class="key">1</div><span class="name" id="name1"></span><div class="cd-overlay" id="cd1"></div></div>
+            <div class="slot"><div class="key">2</div><span class="name" id="name2"></span><div class="cd-overlay" id="cd2"></div></div>
+            <div class="slot"><div class="key">3</div><span class="name" id="name3"></span><div class="cd-overlay" id="cd3"></div></div>
+            <div class="slot"><div class="key">4</div><span class="name" id="name4"></span><div class="cd-overlay" id="cd4"></div></div>
+        </div>
     </div>
 
+    <div id="death-screen">
+        <h1>WASTED</h1>
+        <button id="respawn-btn">RESPAWN</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        let myId = null;
-        let myChar = null;
-        let arenaSize = 1000;
-
-        // Game State
-        let players = {};
-        let projectiles = [];
-        let visuals = [];
         
-        // Input State
-        const keys = { w: false, a: false, s: false, d: false };
-        let mouseX = 0, mouseY = 0;
+        let width, height, myId = null;
+        let gameActive = false;
         let camera = { x: 0, y: 0 };
+        let shakeTime = 0, shakeMagnitude = 0;
+        let mapSize = 3000;
 
-        // Moveset Database
-        const MOVESETS = {
-            'Invincible': [
-                { id: '1', name: 'Tackle', cd: 5, cdTimer: 0, act: () => doDashAttack(40, 15, 20) },
-                { id: '2', name: 'Ground Smash', cd: 8, cdTimer: 0, act: () => doAoE(60, 20) },
-                { id: '3', name: 'Rock Throw', cd: 4, cdTimer: 0, act: () => doProjectile(15) },
-                { id: '4', name: 'Beatdown', cd: 12, cdTimer: 0, act: () => doMeleeCombo(30, 30) }
-            ],
-            'Omni-Man': [
-                { id: '1', name: 'Train Push', cd: 6, cdTimer: 0, act: () => doDashAttack(50, 25, 25) },
-                { id: '2', name: 'Throat Chop', cd: 5, cdTimer: 0, act: () => doMelee(40, 25) },
-                { id: '3', name: 'Flawless Strike', cd: 8, cdTimer: 0, act: () => doProjectile(20) },
-                { id: '4', name: 'Earth is Not Yours', cd: 15, cdTimer: 0, act: () => doAoE(120, 40) }
-            ],
-            'Atom Eve': [
-                { id: '1', name: 'Pink Shield', cd: 8, cdTimer: 0, act: () => doAoE(50, 10) },
-                { id: '2', name: 'Energy Beam', cd: 4, cdTimer: 0, act: () => doProjectile(18) },
-                { id: '3', name: 'Matter Trap', cd: 10, cdTimer: 0, act: () => doAoE(80, 5) },
-                { id: '4', name: 'Explosion', cd: 12, cdTimer: 0, act: () => doAoE(100, 35) }
-            ]
+        // --- CHARACTER ROSTER (Roblox-style kits) ---
+        const CHAR_DATA = {
+            'invincible': {
+                head: '#f1c27d', torso: '#3498db', arms: '#f1c40f', speed: 5.5, size: 20, maxHp: 100,
+                moves: [ { name: 'Knee Strike', cd: 250 }, { name: 'Flurry', cd: 350 }, { name: 'Tackle', cd: 450 }, { name: 'Bloodlust', cd: 1200 } ]
+            },
+            'omniman': {
+                head: '#f1c27d', torso: '#e74c3c', arms: '#fff', speed: 4.5, size: 22, maxHp: 150,
+                moves: [ { name: 'Slam', cd: 300 }, { name: 'Clap', cd: 400 }, { name: 'Impale', cd: 600 }, { name: 'THINK!', cd: 1000 } ]
+            },
+            'atomeve': {
+                head: '#f1c27d', torso: '#ff69b4', arms: '#ff69b4', speed: 5.0, size: 18, maxHp: 90,
+                moves: [ { name: 'Pink Blast', cd: 200 }, { name: 'Shield Push', cd: 400 }, { name: 'Energy Disc', cd: 300 }, { name: 'Nova Burst', cd: 900 } ]
+            },
+            'thragg': {
+                head: '#f1c27d', torso: '#fff', arms: '#e74c3c', speed: 6.0, size: 21, maxHp: 130,
+                moves: [ { name: 'Throat Chop', cd: 250 }, { name: 'Lethal Rush', cd: 350 }, { name: 'Shockwave', cd: 500 }, { name: 'Execution', cd: 1100 } ]
+            },
+            'battlebeast': {
+                head: '#e67e22', torso: '#8e44ad', arms: '#d35400', speed: 4.0, size: 25, maxHp: 180,
+                moves: [ { name: 'Mace Swing', cd: 350 }, { name: 'Roar', cd: 500 }, { name: 'Savage Leap', cd: 600 }, { name: 'Carnage', cd: 1200 } ]
+            },
+            'techjacket': {
+                head: '#95a5a6', torso: '#f1c40f', arms: '#7f8c8d', speed: 5.2, size: 20, maxHp: 110,
+                moves: [ { name: 'Laser', cd: 200 }, { name: 'Missile Barrage', cd: 450 }, { name: 'Jet Boost', cd: 350 }, { name: 'Orbital Strike', cd: 1300 } ]
+            },
+            'conquest': {
+                head: '#d35400', torso: '#555', arms: '#bdc3c7', speed: 3.8, size: 24, maxHp: 170,
+                moves: [ { name: 'Brutal Hook', cd: 300 }, { name: 'Crush', cd: 500 }, { name: 'Earth Shatter', cd: 700 }, { name: 'Unbreakable', cd: 1500 } ]
+            },
+            'allen': {
+                head: '#e74c3c', torso: '#9b59b6', arms: '#e74c3c', speed: 4.8, size: 23, maxHp: 140,
+                moves: [ { name: 'Cosmic Punch', cd: 300 }, { name: 'Eye Beam', cd: 400 }, { name: 'Teleport Smash', cd: 600 }, { name: 'Adaptation', cd: 1200 } ]
+            }
         };
 
-        let dashCd = 0;
-        let m1Cd = 0;
+        const players = {};
+        const hitboxes = [];
+        const particles = [];
+        const keys = {};
+        let mouseX = 0, mouseY = 0;
 
-        function joinGame(character) {
-            const username = document.getElementById('usernameInput').value || 'Guest';
-            myChar = character;
-            socket.emit('joinGame', { username, character });
-            
-            document.getElementById('menu').style.display = 'none';
-            canvas.style.display = 'block';
-            document.getElementById('uiLayer').style.display = 'block';
-            resize();
+        document.getElementById('joinBtn').addEventListener('click', () => {
+            const user = document.getElementById('usernameInput').value || 'Guest';
+            const room = document.getElementById('roomInput').value || 'MAIN';
+            const char = document.getElementById('charSelect').value;
+            socket.emit('joinRoom', { username: user, room: room, character: char });
+        });
 
-            // Build HUD
-            const hud = document.getElementById('movesHud');
-            hud.innerHTML = `<div class="move-box">Q<br>Dash<div class="cooldown-overlay" id="cd-q"></div></div>`;
-            MOVESETS[myChar].forEach(move => {
-                hud.innerHTML += `<div class="move-box">${move.id}<br>${move.name}<div class="cooldown-overlay" id="cd-${move.id}"></div></div>`;
-            });
-        }
+        document.getElementById('respawn-btn').addEventListener('click', () => {
+            socket.emit('respawn');
+            document.getElementById('death-screen').style.display = 'none';
+        });
 
         socket.on('init', (data) => {
             myId = data.id;
-            arenaSize = data.arenaSize;
-            requestAnimationFrame(gameLoop);
+            for (let id in data.players) players[id] = new Player(data.players[id]);
+            
+            const myChar = CHAR_DATA[players[myId].character];
+            for(let i=0; i<4; i++) document.getElementById(`name${i+1}`).innerText = myChar.moves[i].name;
+
+            document.getElementById('login-screen').style.display = 'none';
+            canvas.style.display = 'block';
+            document.getElementById('ui-layer').style.display = 'block';
+            gameActive = true;
+            resize(); loop();
         });
 
-        socket.on('gameState', (data) => {
-            players = data.players;
-            projectiles = data.projectiles;
+        socket.on('playerJoined', (pData) => players[pData.id] = new Player(pData));
+        socket.on('playerLeft', (id) => delete players[id]);
+        
+        socket.on('updateLeaderboard', (playersData) => {
+            let sorted = Object.values(playersData).sort((a,b) => b.score - a.score);
+            let html = 'KILLS<hr>';
+            sorted.forEach(p => { html += `<div>${p.username}: ${p.score}</div>`; });
+            document.getElementById('lb-list').innerHTML = html;
         });
 
-        socket.on('attackVisual', (data) => {
-            visuals.push({ ...data, life: 10, maxLife: 10 });
+        socket.on('opponentMoved', (data) => {
+            if(players[data.id]) { players[data.id].x = data.x; players[data.id].y = data.y; players[data.id].angle = data.angle; }
         });
 
-        // --- COMBAT LOGIC ---
-        function getHitPos(distance) {
-            const p = players[myId];
-            return { x: p.x + Math.cos(p.angle) * distance, y: p.y + Math.sin(p.angle) * distance };
-        }
+        socket.on('opponentAction', (data) => {
+            if(!players[data.id]) return;
+            const p = players[data.id];
+            if (data.type === 'm1') createHitEffect(data.x, data.y, '#fff', 5);
+            if (data.type === 'dash') createHitEffect(p.x, p.y, p.charData.torso, 15);
+            if (data.type === 'hitbox') hitboxes.push(new Hitbox(data.x, data.y, data.radius, data.life, data.color));
+        });
 
-        function doMelee(range, damage) {
-            const pos = getHitPos(range);
-            socket.emit('attack', { type: 'melee', x: pos.x, y: pos.y, range: 40, damage: damage });
-        }
-
-        function doMeleeCombo(range, damage) {
-            for(let i=0; i<3; i++) {
-                setTimeout(() => doMelee(range, damage/3), i * 150);
-            }
-        }
-
-        function doAoE(radius, damage) {
-            const p = players[myId];
-            socket.emit('attack', { type: 'aoe', x: p.x, y: p.y, range: radius, damage: damage });
-        }
-
-        function doProjectile(damage) {
-            const pos = getHitPos(30);
-            socket.emit('attack', { type: 'projectile', x: pos.x, y: pos.y, damage: damage });
-        }
-
-        function doDashAttack(distance, range, damage) {
-            const p = players[myId];
-            p.x += Math.cos(p.angle) * distance; // Instant client side dash
-            p.y += Math.sin(p.angle) * distance;
-            doMelee(range, damage);
-        }
-
-        // --- INPUT HANDLING ---
-        window.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
-            if (keys.hasOwnProperty(key)) keys[key] = true;
-            if (!players[myId] || players[myId].isDead) return;
-
-            // Dash (Q)
-            if (key === 'q' && dashCd <= 0) {
-                const p = players[myId];
-                p.x += Math.cos(p.angle) * 150; // Dash forward
-                p.y += Math.sin(p.angle) * 150;
-                dashCd = 3; // 3 sec cooldown
-            }
-
-            // Abilities 1-4
-            if (['1','2','3','4'].includes(key) && myChar) {
-                const move = MOVESETS[myChar].find(m => m.id === key);
-                if (move && move.cdTimer <= 0) {
-                    move.act();
-                    move.cdTimer = move.cd;
+        socket.on('playerDamaged', (data) => {
+            if(players[data.targetId]) {
+                players[data.targetId].hp = data.hp;
+                if(data.knockback) {
+                    players[data.targetId].vx = data.knockback.vx;
+                    players[data.targetId].vy = data.knockback.vy;
+                    players[data.targetId].stunTimer = data.stun || 20; 
+                }
+                createHitEffect(players[data.targetId].x, players[data.targetId].y, '#e74c3c', 15);
+                
+                if (data.targetId === myId) {
+                    shakeScreen(8, 10);
+                    // Hit indicator
+                    document.getElementById('health-bar-fill').style.background = 'white';
+                    setTimeout(() => document.getElementById('health-bar-fill').style.background = 'linear-gradient(90deg, #27ae60, #2ecc71)', 100);
                 }
             }
         });
 
-        window.addEventListener('keyup', (e) => {
-            const key = e.key.toLowerCase();
-            if (keys.hasOwnProperty(key)) keys[key] = false;
+        socket.on('playerDied', (data) => {
+            if(players[data.victimId]) {
+                players[data.victimId].isDead = true;
+                createHitEffect(players[data.victimId].x, players[data.victimId].y, '#c0392b', 50);
+                if(data.victimId === myId) {
+                    shakeScreen(20, 30);
+                    document.getElementById('death-screen').style.display = 'flex';
+                }
+            }
         });
 
-        window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
+        socket.on('playerRespawned', (id) => {
+            if(players[id]) {
+                players[id].isDead = false;
+                players[id].hp = players[id].charData.maxHp;
+                players[id].stunTimer = 0;
+                if(id === myId) {
+                    players[myId].x = mapSize/2 + (Math.random()*200-100); 
+                    players[myId].y = mapSize/2 + (Math.random()*200-100);
+                }
+            }
         });
+
+        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+        window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
 
         window.addEventListener('mousedown', (e) => {
-            if (e.button === 0 && m1Cd <= 0 && players[myId] && !players[myId].isDead) {
-                // M1 Basic Attack
-                doMelee(30, 5); 
-                m1Cd = 0.5; // Half second M1 cooldown
-            }
+            if(e.button === 0 && gameActive && !players[myId].isDead && players[myId].stunTimer <= 0) players[myId].doM1();
         });
 
-        // --- GAME LOOP & RENDERING ---
-        let lastTime = Date.now();
+        function shakeScreen(magnitude, time) { shakeMagnitude = magnitude; shakeTime = time; }
 
-        function gameLoop() {
-            const now = Date.now();
-            const dt = (now - lastTime) / 1000;
-            lastTime = now;
-
-            updateLocalPlayer(dt);
-            updateCooldowns(dt);
-            draw();
-            requestAnimationFrame(gameLoop);
+        function createHitEffect(x, y, color, count) {
+            for(let i=0; i<count; i++) particles.push(new Particle(x, y, color));
         }
 
-        function updateCooldowns(dt) {
-            if (dashCd > 0) {
-                dashCd -= dt;
-                document.getElementById('cd-q').style.height = `${(dashCd/3)*100}%`;
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.vx = (Math.random()-0.5)*15; this.vy = (Math.random()-0.5)*15;
+                this.life = 25; this.maxLife = 25;
             }
-            if (m1Cd > 0) m1Cd -= dt;
+            update() { this.x+=this.vx; this.y+=this.vy; this.vx*=0.85; this.vy*=0.85; this.life--; }
+            draw(ctx) {
+                ctx.globalAlpha = this.life/this.maxLife; ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10; ctx.shadowColor = this.color;
+                ctx.fillRect(this.x-3, this.y-3, 6, 6); 
+                ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+            }
+        }
 
-            if (myChar) {
-                MOVESETS[myChar].forEach(move => {
-                    if (move.cdTimer > 0) {
-                        move.cdTimer -= dt;
-                        document.getElementById(`cd-${move.id}`).style.height = `${(move.cdTimer/move.cd)*100}%`;
+        class Hitbox {
+            constructor(x, y, radius, life, color, ownerId = null, damage = 0, knockbackMult = 0, stun = 20) {
+                this.x = x; this.y = y; this.radius = radius; this.life = life; this.maxLife = life; this.color = color;
+                this.ownerId = ownerId; this.damage = damage; this.knockbackMult = knockbackMult; this.stun = stun;
+                this.hitSet = new Set(); 
+            }
+            update() {
+                this.life--;
+                if (this.ownerId === myId && this.life > this.maxLife - 5) { // Active frames
+                    for (let id in players) {
+                        if (id !== myId && !players[id].isDead && !this.hitSet.has(id)) {
+                            let p = players[id];
+                            if (Math.hypot(this.x - p.x, this.y - p.y) < this.radius + p.charData.size) {
+                                this.hitSet.add(id);
+                                let angle = Math.atan2(p.y - players[myId].y, p.x - players[myId].x);
+                                let kb = { vx: Math.cos(angle) * this.knockbackMult, vy: Math.sin(angle) * this.knockbackMult };
+                                
+                                p.hp -= this.damage;
+                                let killed = p.hp <= 0;
+                                socket.emit('dealDamage', { targetId: id, hp: p.hp, knockback: kb, stun: this.stun, killed: killed });
+                            }
+                        }
                     }
-                });
-            }
-        }
-
-        function updateLocalPlayer(dt) {
-            const p = players[myId];
-            if (!p || p.isDead) return;
-
-            let dx = 0, dy = 0;
-            if (keys.w) dy -= 1;
-            if (keys.s) dy += 1;
-            if (keys.a) dx -= 1;
-            if (keys.d) dx += 1;
-
-            if (dx !== 0 || dy !== 0) {
-                const len = Math.hypot(dx, dy);
-                p.x += (dx / len) * p.speed;
-                p.y += (dy / len) * p.speed;
-            }
-
-            // Keep in bounds
-            p.x = Math.max(20, Math.min(arenaSize - 20, p.x));
-            p.y = Math.max(20, Math.min(arenaSize - 20, p.y));
-
-            // Face mouse
-            const screenX = canvas.width / 2;
-            const screenY = canvas.height / 2;
-            p.angle = Math.atan2(mouseY - screenY, mouseX - screenX);
-
-            socket.emit('updatePosition', { x: p.x, y: p.y, angle: p.angle });
-
-            // Update Camera
-            camera.x = p.x - canvas.width / 2;
-            camera.y = p.y - canvas.height / 2;
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(-camera.x, -camera.y);
-
-            // Draw Arena Floor grid to look like a Roblox baseplate
-            ctx.strokeStyle = '#334155';
-            ctx.lineWidth = 1;
-            for(let i=0; i<=arenaSize; i+=50) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, arenaSize); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(arenaSize, i); ctx.stroke();
-            }
-
-            // Draw Projectiles
-            ctx.fillStyle = '#fcd34d';
-            projectiles.forEach(p => {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            // Draw Attack Visuals (Hitboxes/AoE)
-            for (let i = visuals.length - 1; i >= 0; i--) {
-                let v = visuals[i];
-                ctx.fillStyle = `rgba(255, 0, 0, ${v.life / v.maxLife})`;
-                ctx.beginPath();
-                if (v.type === 'aoe') {
-                    ctx.arc(v.x, v.y, 60, 0, Math.PI * 2);
-                } else {
-                    ctx.arc(v.x, v.y, 30, 0, Math.PI * 2);
                 }
-                ctx.fill();
-                v.life--;
-                if (v.life <= 0) visuals.splice(i, 1);
+            }
+            draw(ctx) {
+                ctx.fillStyle = this.color; ctx.globalAlpha = (this.life/this.maxLife) * 0.4;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        class Player {
+            constructor(data) {
+                this.id = data.id; this.username = data.username; 
+                this.character = data.character; this.charData = CHAR_DATA[this.character];
+                this.x = mapSize/2; this.y = mapSize/2; this.vx = 0; this.vy = 0; this.angle = 0;
+                this.hp = data.hp !== undefined ? data.hp : this.charData.maxHp; 
+                this.isDead = data.isDead;
+                
+                this.stunTimer = 0; this.m1Combo = 0; this.m1Timer = 0; this.m1Cooldown = 0;
+                this.dashCooldown = 0; this.abilityCooldowns = [0, 0, 0, 0]; this.activeAction = 0;
             }
 
-            // Draw Players (Top-Down Lego Style)
-            for (let id in players) {
-                const p = players[id];
-                if (p.isDead) continue;
+            update() {
+                if (this.isDead) return;
 
-                ctx.save();
-                ctx.translate(p.x, p.y);
+                if(this.stunTimer > 0) this.stunTimer--;
+                if(this.m1Cooldown > 0) this.m1Cooldown--;
+                if(this.m1Timer > 0) {
+                    this.m1Timer--;
+                    if(this.m1Timer <= 0) this.m1Combo = 0;
+                }
+                if(this.dashCooldown > 0) this.dashCooldown--;
+                if(this.activeAction > 0) this.activeAction--;
+                for(let i=0; i<4; i++) if(this.abilityCooldowns[i] > 0) this.abilityCooldowns[i]--;
+
+                if (this.id === myId) {
+                    for(let i=0; i<4; i++) {
+                        let perc = (this.abilityCooldowns[i] / this.charData.moves[i].cd) * 100;
+                        document.getElementById(`cd${i+1}`).style.height = `${perc}%`;
+                    }
+                    
+                    let hpPerc = (this.hp / this.charData.maxHp) * 100;
+                    document.getElementById('health-bar-fill').style.width = `${Math.max(0, hpPerc)}%`;
+                    document.getElementById('health-text').innerText = `${Math.ceil(this.hp)} / ${this.charData.maxHp}`;
+
+                    let speed = this.charData.speed;
+                    // Stunned or locked in action = NO MOVEMENT
+                    if (this.stunTimer <= 0 && this.activeAction <= 0) {
+                        let dx = 0, dy = 0;
+                        if (keys['KeyW']) dy -= 1; if (keys['KeyS']) dy += 1;
+                        if (keys['KeyA']) dx -= 1; if (keys['KeyD']) dx += 1;
+                        
+                        if (dx !== 0 || dy !== 0) {
+                            let len = Math.hypot(dx, dy);
+                            this.vx += (dx / len) * speed * 0.2;
+                            this.vy += (dy / len) * speed * 0.2;
+                        }
+
+                        let screenX = this.x - camera.x; let screenY = this.y - camera.y;
+                        this.angle = Math.atan2(mouseY - screenY, mouseX - screenX);
+
+                        if (keys['KeyQ'] && this.dashCooldown <= 0) {
+                            this.dashCooldown = 150; 
+                            let dX = dx || Math.cos(this.angle); let dY = dy || Math.sin(this.angle);
+                            this.vx = dX * 30; this.vy = dY * 30;
+                            socket.emit('action', { type: 'dash' });
+                            createHitEffect(this.x, this.y, this.charData.torso, 20);
+                        }
+
+                        if (keys['Digit1'] && this.abilityCooldowns[0] <= 0) this.useAbility(0);
+                        if (keys['Digit2'] && this.abilityCooldowns[1] <= 0) this.useAbility(1);
+                        if (keys['Digit3'] && this.abilityCooldowns[2] <= 0) this.useAbility(2);
+                        if (keys['Digit4'] && this.abilityCooldowns[3] <= 0) this.useAbility(3);
+                    }
+
+                    this.vx *= 0.85; this.vy *= 0.85;
+                    this.x += this.vx; this.y += this.vy;
+                    
+                    if(this.x < 0) this.x = 0; if(this.x > mapSize) this.x = mapSize;
+                    if(this.y < 0) this.y = 0; if(this.y > mapSize) this.y = mapSize;
+
+                    socket.emit('move', { x: this.x, y: this.y, angle: this.angle });
+                }
+            }
+
+            doM1() {
+                if (this.m1Cooldown > 0) return;
                 
-                // Draw Username & HP Bar
-                ctx.fillStyle = 'white';
-                ctx.font = '14px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(p.username, 0, -40);
+                this.m1Combo++;
+                let isFinisher = this.m1Combo >= 4;
+                let dmg = isFinisher ? 15 : 5;
+                let kb = isFinisher ? 25 : 3; // Massive knockback on hit 4
+                let stunTime = isFinisher ? 40 : 25; // Hitstun
                 
-                ctx.fillStyle = 'red';
-                ctx.fillRect(-25, -35, 50, 5);
-                ctx.fillStyle = '#22c55e';
-                ctx.fillRect(-25, -35, 50 * (p.hp / p.maxHp), 5);
-
-                // Rotate for looking direction
-                ctx.rotate(p.angle);
-
-                // Draw Top-Down Blocky Shoulders/Arms (Lego Aesthetic)
-                ctx.fillStyle = p.color;
-                ctx.fillRect(-15, -20, 30, 40); // Torso
+                // M1 Step forward
+                this.vx = Math.cos(this.angle) * (isFinisher ? 15 : 8);
+                this.vy = Math.sin(this.angle) * (isFinisher ? 15 : 8);
                 
-                // Draw Head
-                ctx.fillStyle = '#fcd34d'; // Lego skin color
-                ctx.strokeStyle = 'black';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(0, 0, 12, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
+                let hx = this.x + Math.cos(this.angle) * 35;
+                let hy = this.y + Math.sin(this.angle) * 35;
+                let radius = isFinisher ? 45 : 30;
+                
+                hitboxes.push(new Hitbox(hx, hy, radius, 10, '#fff', this.id, dmg, kb, stunTime));
+                socket.emit('action', { type: 'm1', x: hx, y: hy });
+                socket.emit('action', { type: 'hitbox', x: hx, y: hy, radius: radius, life: 10, color: '#fff' });
 
-                // Fists/Hands pointing forward
-                ctx.fillStyle = '#fcd34d';
-                ctx.fillRect(10, -22, 10, 10); // Right hand
-                ctx.fillRect(10, 12, 10, 10);  // Left hand
+                this.m1Cooldown = 25;
+                this.m1Timer = 100; // Time before combo drops
+                if (isFinisher) {
+                    this.m1Combo = 0;
+                    this.m1Cooldown = 70; // Recovery after full combo
+                    shakeScreen(8, 15);
+                }
+            }
+
+            // Universal logic wrapper for the varied abilities
+            useAbility(index) {
+                this.abilityCooldowns[index] = this.charData.moves[index].cd;
+                this.activeAction = 30; // Lock character state
+                
+                let hx = this.x + Math.cos(this.angle)*50;
+                let hy = this.y + Math.sin(this.angle)*50;
+
+                // Generic Move Assignments based on the Index
+                if (index === 0) { // Move 1: Quick Attack / Dash
+                    this.vx = Math.cos(this.angle) * 35; this.vy = Math.sin(this.angle) * 35;
+                    let color = this.charData.arms;
+                    hitboxes.push(new Hitbox(this.x, this.y, 45, 20, color, this.id, 15, 15, 30)); 
+                    socket.emit('action', { type: 'hitbox', x: this.x, y: this.y, radius: 45, life: 20, color: color });
+                } 
+                else if (index === 1) { // Move 2: Cone / Ranged Burst
+                    let color = this.charData.torso;
+                    hitboxes.push(new Hitbox(hx, hy, 60, 15, color, this.id, 20, 20, 40));
+                    socket.emit('action', { type: 'hitbox', x: hx, y: hy, radius: 60, life: 15, color: color });
+                }
+                else if (index === 2) { // Move 3: Heavy / Grab
+                    this.activeAction = 40;
+                    hx = this.x + Math.cos(this.angle)*60; hy = this.y + Math.sin(this.angle)*60;
+                    hitboxes.push(new Hitbox(hx, hy, 50, 10, '#fff', this.id, 30, 0, 60)); // High Stun, no kb initially
+                    socket.emit('action', { type: 'hitbox', x: hx, y: hy, radius: 50, life: 10, color: '#fff' });
+                }
+                else if (index === 3) { // Move 4: Ultimate / AoE
+                    this.activeAction = 60; // Long windup
+                    setTimeout(() => {
+                        hitboxes.push(new Hitbox(this.x, this.y, 150, 20, this.charData.torso, this.id, 50, 40, 80));
+                        socket.emit('action', { type: 'hitbox', x: this.x, y: this.y, radius: 150, life: 20, color: this.charData.torso });
+                        shakeScreen(20, 20);
+                    }, 500); // 0.5s delay
+                }
+            }
+
+            draw(ctx) {
+                if (this.isDead) return;
+
+                let drawX = this.x - camera.x; let drawY = this.y - camera.y;
+
+                // Roblox R6 Top-Down Style
+                ctx.save(); ctx.translate(drawX, drawY); ctx.rotate(this.angle);
+                
+                let s = this.charData.size;
+
+                // Torso
+                ctx.fillStyle = this.charData.torso;
+                ctx.fillRect(-s*0.8, -s*0.5, s*1.6, s);
+
+                // Arms (Left and Right)
+                ctx.fillStyle = this.charData.arms;
+                // Move arms forward if attacking
+                let lArmX = (this.m1Combo === 1 || this.m1Combo === 3) && this.m1Cooldown > 15 ? s*0.8 : 0;
+                let rArmX = (this.m1Combo === 2 || this.m1Combo === 4) && this.m1Cooldown > 15 ? s*0.8 : 0;
+                
+                ctx.fillRect(lArmX - s*0.4, -s*1.2, s*0.8, s*0.6); // Left Arm
+                ctx.fillRect(rArmX - s*0.4, s*0.6, s*0.8, s*0.6);  // Right Arm
+
+                // Head
+                ctx.fillStyle = this.charData.head;
+                ctx.beginPath(); ctx.arc(0, 0, s*0.6, 0, Math.PI*2); ctx.fill();
+
+                // Direction Indicator (Face)
+                ctx.fillStyle = '#111';
+                ctx.fillRect(s*0.4, -s*0.2, s*0.2, s*0.4);
 
                 ctx.restore();
+
+                // UI Above Head
+                ctx.fillStyle = "#fff"; ctx.font = "bold 14px Montserrat"; ctx.textAlign = "center";
+                ctx.shadowBlur = 4; ctx.shadowColor = "black";
+                ctx.fillText(this.username, drawX, drawY - s - 25);
+                
+                // M1 Combo Counter
+                if (this.m1Combo > 0) {
+                    ctx.fillStyle = "#f1c40f"; ctx.font = "italic 900 12px Montserrat";
+                    ctx.fillText(`HIT ${this.m1Combo}`, drawX, drawY - s - 40);
+                }
+                ctx.shadowBlur = 0; // Reset
+
+                // HP Bar
+                ctx.fillStyle = "#222"; ctx.fillRect(drawX - 25, drawY - s - 15, 50, 6);
+                ctx.fillStyle = "#e74c3c"; ctx.fillRect(drawX - 25, drawY - s - 15, 50 * (this.hp/this.charData.maxHp), 6);
+            }
+        }
+
+        function drawGrid() {
+            // Draw a cool Battlegrounds style checkerboard floor
+            ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, width, height);
+            ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2;
+            let startX = -camera.x % 80; let startY = -camera.y % 80;
+            ctx.beginPath();
+            for (let x = startX; x < width; x += 80) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+            for (let y = startY; y < height; y += 80) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
+            ctx.stroke();
+            
+            // Map Boundary
+            ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 10;
+            ctx.strokeRect(-camera.x, -camera.y, mapSize, mapSize);
+        }
+
+        function loop() {
+            if (!gameActive) return;
+
+            if(players[myId]) {
+                camera.x += (players[myId].x - width/2 - camera.x) * 0.15;
+                camera.y += (players[myId].y - height/2 - camera.y) * 0.15;
             }
 
-            ctx.restore();
-        }
+            for(let id in players) players[id].update();
+            for (let i = hitboxes.length - 1; i >= 0; i--) {
+                hitboxes[i].update();
+                if (hitboxes[i].life <= 0) hitboxes.splice(i, 1);
+            }
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
 
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            if (shakeTime > 0) shakeTime--;
+
+            // Draw
+            ctx.save();
+            if (shakeTime > 0) ctx.translate((Math.random() - 0.5) * shakeMagnitude, (Math.random() - 0.5) * shakeMagnitude);
+
+            drawGrid();
+
+            hitboxes.forEach(h => { ctx.save(); ctx.translate(-camera.x, -camera.y); h.draw(ctx); ctx.restore(); });
+            particles.forEach(p => { ctx.save(); ctx.translate(-camera.x, -camera.y); p.draw(ctx); ctx.restore(); });
+            for(let id in players) players[id].draw(ctx);
+
+            ctx.restore();
+            requestAnimationFrame(loop);
         }
-        window.addEventListener('resize', resize);
     </script>
 </body>
 </html>
