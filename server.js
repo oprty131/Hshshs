@@ -3,44 +3,51 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
-// Serve the 'public' folder where your index.html lives
 app.use(express.static('public'));
 
-let players = {};
-
 io.on('connection', (socket) => {
-    let currentPlayers = Object.keys(players).length;
     
-    // Limit to 2 players
-    if (currentPlayers >= 2) {
-        socket.emit('serverFull');
-        socket.disconnect();
-        return;
-    }
+    socket.on('joinRoom', ({ username, room }) => {
+        // Check how many people are already in this specific room
+        const clients = io.sockets.adapter.rooms.get(room);
+        const numClients = clients ? clients.size : 0;
 
-    // Assign Player 1 or Player 2 based on who is already in
-    let isP1Taken = Object.values(players).some(p => p.playerNum === 1);
-    let playerNum = isP1Taken ? 2 : 1;
+        if (numClients >= 2) {
+            socket.emit('roomError', 'ROOM IS FULL');
+            return;
+        }
 
-    players[socket.id] = { id: socket.id, playerNum: playerNum };
-    console.log(`Player ${playerNum} connected!`);
-    
-    // Tell the client which player they are
-    socket.emit('init', playerNum);
+        // Join the room and assign player 1 or 2
+        socket.join(room);
+        const playerNum = numClients === 0 ? 1 : 2;
+        socket.data = { username, room, playerNum };
+        
+        console.log(`${username} joined room ${room} as Player ${playerNum}`);
+        
+        // Tell the player who they are
+        socket.emit('init', playerNum);
 
-    // Receive movement from one player, broadcast to the other
-    socket.on('move', (data) => {
-        socket.broadcast.emit('opponentMoved', data);
-    });
+        // If player 2 joins, tell both players the game can start
+        if (playerNum === 2) {
+            io.to(room).emit('gameReady');
+        }
 
-    // Receive shooting event, broadcast to the other
-    socket.on('shoot', (data) => {
-        socket.broadcast.emit('opponentShot', data);
+        // Bounce data ONLY to the other person in the same room
+        socket.on('move', (data) => {
+            socket.to(room).emit('opponentMoved', data);
+        });
+
+        socket.on('shoot', (data) => {
+            socket.to(room).emit('opponentShot', data);
+        });
     });
 
     socket.on('disconnect', () => {
-        console.log(`Player ${players[socket.id]?.playerNum} disconnected.`);
-        delete players[socket.id];
+        if (socket.data && socket.data.room) {
+            console.log(`${socket.data.username} left room ${socket.data.room}`);
+            // Tell the other player their opponent left
+            socket.to(socket.data.room).emit('opponentLeft');
+        }
     });
 });
 
