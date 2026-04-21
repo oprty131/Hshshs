@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON STRIKE - Online Arena</title>
+    <title>BATTLEGROUNDS: INVINCIBLE</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
@@ -11,7 +11,7 @@
             margin: 0; padding: 0; width: 100%; height: 100%;
             background-color: #050508; overflow: hidden;
             font-family: 'Orbitron', sans-serif; user-select: none;
-            touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none;
+            touch-action: none; -webkit-touch-callout: none;
         }
         #gameCanvas { display: none; width: 100%; height: 100%; } 
         body::after {
@@ -27,57 +27,62 @@
         }
         .login-box {
             background: rgba(20, 20, 30, 0.8); padding: 2rem; border-radius: 10px;
-            border: 2px solid #00f3ff; box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
+            border: 2px solid #fff; box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
             text-align: center; width: 80%; max-width: 400px;
         }
-        .login-box h1 { margin-top: 0; color: #fff; text-shadow: 0 0 10px #00f3ff; }
-        input {
+        .login-box h1 { margin-top: 0; color: #fff; text-shadow: 0 0 10px #fff; }
+        input, select {
             width: 85%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #444;
-            color: #00f3ff; font-family: 'Orbitron', sans-serif; font-size: 1rem; text-align: center;
+            color: #fff; font-family: 'Orbitron', sans-serif; font-size: 1rem; text-align: center;
         }
-        input:focus { outline: none; border-color: #ff0055; box-shadow: 0 0 10px #ff0055; }
+        input:focus, select:focus { outline: none; border-color: #ff0055; box-shadow: 0 0 10px #ff0055; }
         button {
-            width: 100%; padding: 15px; margin-top: 15px; background: #00f3ff; color: #000;
+            width: 100%; padding: 15px; margin-top: 15px; background: #fff; color: #000;
             font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.2rem;
             border: none; cursor: pointer; transition: 0.2s;
         }
-        button:hover, button:active { background: #fff; box-shadow: 0 0 15px #00f3ff; }
+        button:hover, button:active { background: #ff0055; color: white; box-shadow: 0 0 15px #ff0055; }
         #error-msg { color: #ff0055; font-size: 0.9rem; margin-top: 10px; text-shadow: 0 0 5px #ff0055; }
 
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
             pointer-events: none; display: none; flex-direction: column; justify-content: space-between;
         }
-        .score-container { display: flex; justify-content: space-between; padding: 2rem 5vw; font-size: clamp(3rem, 8vw, 4rem); font-weight: 900; }
-        .p1-score { color: #00f3ff; text-shadow: 0 0 10px #00f3ff; }
-        .p2-score { color: #ff0055; text-shadow: 0 0 10px #ff0055; }
+        
+        #leaderboard {
+            position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5);
+            padding: 10px; border: 1px solid #444; color: white; font-size: 0.8rem;
+            min-width: 150px; text-align: right;
+        }
+        .lb-entry { margin: 5px 0; }
+
         .controls { text-align: center; padding: 1rem; color: rgba(255,255,255,0.4); font-size: 0.8rem; }
         
-        #announcement {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: clamp(2rem, 5vw, 4rem); color: white; text-align: center;
-            text-shadow: 0 0 20px rgba(255,255,255,0.8); opacity: 1; transition: opacity 0.3s;
-        }
-        
-        .shoot-btn {
+        .action-btn {
             position: absolute; bottom: 10%; right: 5%; width: 80px; height: 80px;
             border-radius: 50%; background: rgba(0, 0, 0, 0.5); color: white;
             font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900;
-            border: 2px solid #00f3ff; box-shadow: 0 0 15px #00f3ff;
+            border: 2px solid #fff; box-shadow: 0 0 15px #fff;
             z-index: 20; pointer-events: auto; display: flex; align-items: center; justify-content: center;
         }
-        .shoot-btn:active { background: rgba(255, 255, 255, 0.2); }
-        @media (hover: hover) and (pointer: fine) { .shoot-btn { display: none; } }
+        .action-btn:active { background: rgba(255, 255, 255, 0.2); }
+        @media (hover: hover) and (pointer: fine) { .action-btn { display: none; } }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
         <div class="login-box">
-            <h1>NEON STRIKE</h1>
-            <input type="text" id="usernameInput" placeholder="ENTER USERNAME" maxlength="10" autocomplete="off">
-            <input type="text" id="roomInput" placeholder="ENTER ROOM CODE" maxlength="10" autocomplete="off">
-            <button id="joinBtn">JOIN MATCH</button>
+            <h1>BATTLEGROUNDS</h1>
+            <input type="text" id="usernameInput" placeholder="USERNAME" maxlength="12" autocomplete="off">
+            <input type="text" id="roomInput" placeholder="ROOM CODE" maxlength="10" autocomplete="off">
+            <select id="charSelect">
+                <option value="omniman">Omni-Man (Melee/Dash)</option>
+                <option value="thragg">Thragg (Heavy Melee)</option>
+                <option value="eve">Atom Eve (Shield Blasts)</option>
+                <option value="techjacket">Tech Jacket (Rapid Lasers)</option>
+            </select>
+            <button id="joinBtn">DEPLOY</button>
             <div id="error-msg"></div>
         </div>
     </div>
@@ -85,15 +90,12 @@
     <canvas id="gameCanvas"></canvas>
     
     <div id="ui-layer">
-        <div class="score-container">
-            <div class="p1-score" id="score1">0</div>
-            <div class="p2-score" id="score2">0</div>
+        <div id="leaderboard">
+            <div style="color:#888; margin-bottom:5px;">TOP KILLERS</div>
+            <div id="lb-list"></div>
         </div>
-        <div id="announcement">
-            <div id="winnerText">WAITING FOR PLAYER 2</div>
-        </div>
-        <div class="shoot-btn" id="shootBtn">SHOOT</div>
-        <div class="controls">USE JOYSTICK/WASD TO MOVE, BUTTON/SPACE TO SHOOT</div>
+        <div class="action-btn" id="actionBtn">ATTACK</div>
+        <div class="controls">JOYSTICK/WASD: MOVE | BUTTON/SPACE: ATTACK</div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -107,60 +109,105 @@
         const uiLayer = document.getElementById('ui-layer');
         const joinBtn = document.getElementById('joinBtn');
         const errorMsg = document.getElementById('error-msg');
-        const announcement = document.getElementById('announcement');
-        const winnerText = document.getElementById('winnerText');
-        const shootBtn = document.getElementById('shootBtn');
-        const score1El = document.getElementById('score1');
-        const score2El = document.getElementById('score2');
+        const actionBtn = document.getElementById('actionBtn');
+        const lbList = document.getElementById('lb-list');
 
-        let width, height;
-        let myPlayerNum = null;
+        let width, height, myId = null;
         let gameActive = false;
-        let score = { p1: 0, p2: 0 };
-        const WIN_SCORE = 5;
         let shakeTime = 0, shakeMagnitude = 0;
 
-        function shakeScreen(magnitude, time) {
-            shakeMagnitude = magnitude; shakeTime = time;
-        }
+        // Character Moveset Configurations
+        const CHAR_STATS = {
+            'omniman': { color: '#ff2222', speed: 1.3, cd: 40, type: 'dash', size: 16, dashPower: 25 },
+            'thragg': { color: '#8b0000', speed: 1.1, cd: 60, type: 'dash', size: 18, dashPower: 35 },
+            'eve': { color: '#ff69b4', speed: 0.9, cd: 30, type: 'shoot', size: 14, bRadius: 10, bSpeed: 8, bounce: 3 },
+            'techjacket': { color: '#ffd700', speed: 1.0, cd: 8, type: 'shoot', size: 15, bRadius: 3, bSpeed: 18, bounce: 0 }
+        };
+
+        const players = {};
+        const bullets = [];
+        const particles = [];
+
+        function shakeScreen(magnitude, time) { shakeMagnitude = magnitude; shakeTime = time; }
 
         joinBtn.addEventListener('click', () => {
             const user = document.getElementById('usernameInput').value.trim();
             const room = document.getElementById('roomInput').value.trim().toUpperCase();
+            const char = document.getElementById('charSelect').value;
             if (!user || !room) { errorMsg.innerText = "USERNAME AND ROOM REQUIRED"; return; }
             errorMsg.innerText = "CONNECTING...";
-            socket.emit('joinRoom', { username: user, room: room });
+            socket.emit('joinRoom', { username: user, room: room, character: char });
         });
 
-        socket.on('init', (num) => {
-            myPlayerNum = num;
-            if (num === 2) shootBtn.style.borderColor = '#ff0055';
+        socket.on('init', (data) => {
+            myId = data.id;
+            
+            // Populate existing players
+            for (let id in data.players) {
+                const pInfo = data.players[id];
+                const stats = CHAR_STATS[pInfo.character];
+                players[id] = new Player(id, pInfo.username, stats);
+                players[id].score = pInfo.score;
+            }
+
+            // Set Action button color based on your character
+            actionBtn.style.borderColor = CHAR_STATS[players[myId].stats.color];
+            
             loginScreen.style.display = 'none';
             canvas.style.display = 'block';
             uiLayer.style.display = 'flex';
+            gameActive = true;
             resize(); loop(); 
+            updateLeaderboard();
         });
 
         socket.on('roomError', (msg) => { errorMsg.innerText = msg; });
-        socket.on('gameReady', () => {
-            winnerText.innerText = 'FIGHT!';
-            setTimeout(() => { announcement.style.opacity = 0; }, 1500);
-            gameActive = true;
+        
+        socket.on('playerJoined', (pInfo) => {
+            players[pInfo.id] = new Player(pInfo.id, pInfo.username, CHAR_STATS[pInfo.character]);
+            updateLeaderboard();
         });
-        socket.on('opponentLeft', () => {
-            gameActive = false; announcement.style.opacity = 1;
-            winnerText.innerText = 'OPPONENT DISCONNECTED';
+
+        socket.on('playerLeft', (id) => {
+            delete players[id];
+            updateLeaderboard();
+        });
+
+        socket.on('updateLeaderboard', (serverPlayers) => {
+            for(let id in serverPlayers) {
+                if(players[id]) players[id].score = serverPlayers[id].score;
+            }
+            updateLeaderboard();
         });
 
         socket.on('opponentMoved', (data) => {
-            let opponent = myPlayerNum === 1 ? p2 : p1;
-            opponent.x = data.x; opponent.y = data.y; opponent.angle = data.angle;
+            if(players[data.id]) {
+                players[data.id].x = data.x;
+                players[data.id].y = data.y;
+                players[data.id].angle = data.angle;
+            }
         });
 
-        socket.on('opponentShot', (data) => {
-            let opponent = myPlayerNum === 1 ? p2 : p1;
-            bullets.push(new Bullet(data.x, data.y, data.angle, opponent.color, opponent.id));
+        socket.on('opponentAction', (data) => {
+            if(!players[data.id]) return;
+            const p = players[data.id];
+            
+            if(data.type === 'shoot') {
+                bullets.push(new Bullet(data.x, data.y, data.angle, p.stats, data.id));
+            } else if (data.type === 'dash') {
+                // Visual feedback for opponent dash
+                createSparks(data.x, data.y, p.stats.color, 15);
+                p.isDashing = true;
+                setTimeout(() => p.isDashing = false, 300);
+            }
         });
+
+        function updateLeaderboard() {
+            const sorted = Object.values(players).sort((a, b) => b.score - a.score).slice(0, 5);
+            lbList.innerHTML = sorted.map(p => 
+                `<div class="lb-entry" style="color:${p.stats.color}">${p.username}: ${p.score}</div>`
+            ).join('');
+        }
 
         function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize);
@@ -169,50 +216,36 @@
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // --- NEW VIRTUAL JOYSTICK LOGIC ---
+        // Joystick Logic
         let joystick = { active: false, id: null, startX: 0, startY: 0, x: 0, y: 0 };
         const maxJoyRadius = 50;
-        let isShooting = false;
+        let isAttacking = false;
 
-        // Shoot Button Events (Isolated to not interfere with Joystick)
-        shootBtn.addEventListener('touchstart', (e) => { e.stopPropagation(); e.preventDefault(); isShooting = true; }, {passive: false});
-        shootBtn.addEventListener('touchend', (e) => { e.stopPropagation(); e.preventDefault(); isShooting = false; }, {passive: false});
+        actionBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isAttacking = true; }, {passive: false});
+        actionBtn.addEventListener('touchend', (e) => { e.preventDefault(); isAttacking = false; }, {passive: false});
 
-        // Global Touch Events for Joystick
         window.addEventListener('touchstart', (e) => {
-            if(loginScreen.style.display !== 'none') return;
+            if(!gameActive) return;
             e.preventDefault();
             for(let i = 0; i < e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
-                // Activate joystick only if touched on the left half of the screen
                 if(!joystick.active && t.clientX < width / 2) {
-                    joystick.active = true;
-                    joystick.id = t.identifier;
-                    joystick.startX = t.clientX;
-                    joystick.startY = t.clientY;
-                    joystick.x = t.clientX;
-                    joystick.y = t.clientY;
+                    joystick.active = true; joystick.id = t.identifier;
+                    joystick.startX = joystick.x = t.clientX; joystick.startY = joystick.y = t.clientY;
                 }
             }
         }, {passive: false});
 
         window.addEventListener('touchmove', (e) => {
-            if(loginScreen.style.display !== 'none') return;
+            if(!gameActive) return;
             e.preventDefault();
             for(let i = 0; i < e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
                 if(joystick.active && t.identifier === joystick.id) {
-                    let dx = t.clientX - joystick.startX;
-                    let dy = t.clientY - joystick.startY;
+                    let dx = t.clientX - joystick.startX, dy = t.clientY - joystick.startY;
                     let dist = Math.hypot(dx, dy);
-                    
-                    // Constrain joystick visually to max radius
-                    if(dist > maxJoyRadius) {
-                        dx = (dx / dist) * maxJoyRadius;
-                        dy = (dy / dist) * maxJoyRadius;
-                    }
-                    joystick.x = joystick.startX + dx;
-                    joystick.y = joystick.startY + dy;
+                    if(dist > maxJoyRadius) { dx = (dx / dist) * maxJoyRadius; dy = (dy / dist) * maxJoyRadius; }
+                    joystick.x = joystick.startX + dx; joystick.y = joystick.startY + dy;
                 }
             }
         }, {passive: false});
@@ -220,166 +253,158 @@
         const handleTouchEnd = (e) => {
             for(let i = 0; i < e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
-                if(joystick.active && t.identifier === joystick.id) {
-                    joystick.active = false;
-                    joystick.id = null;
-                }
+                if(joystick.active && t.identifier === joystick.id) { joystick.active = false; joystick.id = null; }
             }
         };
         window.addEventListener('touchend', handleTouchEnd);
         window.addEventListener('touchcancel', handleTouchEnd);
 
-
-        const particles = [];
-        const bullets = [];
+        function createSparks(x, y, color, count) {
+            for(let i = 0; i < count; i++) particles.push(new Particle(x, y, color, 5, 2, 20));
+        }
 
         class Particle {
             constructor(x, y, color, speed, size, life) {
                 this.x = x; this.y = y;
                 this.vx = (Math.random() - 0.5) * speed; this.vy = (Math.random() - 0.5) * speed;
-                this.color = color; this.size = size; this.life = life; this.maxLife = life;
-                this.friction = 0.96;
+                this.color = color; this.size = size; this.life = this.maxLife = life;
             }
             update() {
-                this.vx *= this.friction; this.vy *= this.friction;
-                this.x += this.vx; this.y += this.vy; this.life--;
+                this.vx *= 0.96; this.vy *= 0.96; this.x += this.vx; this.y += this.vy; this.life--;
             }
             draw(ctx) {
                 ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
-                ctx.fillStyle = this.color; ctx.shadowBlur = 10; ctx.shadowColor = this.color;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
-                ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+                ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 1.0;
             }
         }
 
         class Bullet {
-            constructor(x, y, angle, color, owner) {
-                this.x = x; this.y = y;
-                const speed = 15;
-                this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
-                this.color = color; this.owner = owner;
-                this.radius = 4; this.bounces = 1; this.life = 120;
+            constructor(x, y, angle, stats, owner) {
+                this.x = x; this.y = y; this.owner = owner; this.color = stats.color;
+                this.radius = stats.bRadius; this.bounces = stats.bounce; this.life = 120;
+                this.vx = Math.cos(angle) * stats.bSpeed; this.vy = Math.sin(angle) * stats.bSpeed;
             }
             update() {
                 this.x += this.vx; this.y += this.vy; this.life--;
-                if (this.x < 0 || this.x > width) { this.vx *= -1; this.bounces--; this.createSparks(); }
-                if (this.y < 0 || this.y > height) { this.vy *= -1; this.bounces--; this.createSparks(); }
-                if (Math.random() > 0.5) particles.push(new Particle(this.x, this.y, this.color, 2, 2, 15));
-            }
-            createSparks() {
-                for(let i = 0; i < 5; i++) particles.push(new Particle(this.x, this.y, this.color, 5, 2, 20));
+                if (this.x < 0 || this.x > width) { this.vx *= -1; this.bounces--; createSparks(this.x, this.y, this.color, 3); }
+                if (this.y < 0 || this.y > height) { this.vy *= -1; this.bounces--; createSparks(this.x, this.y, this.color, 3); }
+                if (Math.random() > 0.5) particles.push(new Particle(this.x, this.y, this.color, 2, 2, 10));
             }
             draw(ctx) {
-                ctx.fillStyle = '#fff'; ctx.shadowBlur = 15; ctx.shadowColor = this.color;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
-                ctx.shadowBlur = 0;
+                ctx.fillStyle = this.color; ctx.shadowBlur = 10; ctx.shadowColor = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
             }
         }
 
-        class Ship {
-            constructor(x, y, color, id) {
-                this.id = id; this.x = x; this.y = y; this.vx = 0; this.vy = 0;
-                this.angle = id === 1 ? 0 : Math.PI; this.color = color;
-                this.size = 15; this.cooldown = 0; this.dead = false; this.respawnTimer = 0;
+        class Player {
+            constructor(id, username, stats) {
+                this.id = id; this.username = username; this.stats = stats;
+                this.x = Math.random() * (window.innerWidth || 800); this.y = Math.random() * (window.innerHeight || 600);
+                this.vx = 0; this.vy = 0; this.angle = 0; this.cooldown = 0; 
+                this.dead = false; this.respawnTimer = 0; this.score = 0;
+                this.isDashing = false;
             }
+            
             update() {
                 if (this.dead) {
-                    this.respawnTimer--;
-                    if (this.respawnTimer <= 0) this.respawn();
+                    if (--this.respawnTimer <= 0) this.respawn();
                     return;
                 }
 
-                if (!gameActive) return; 
-                
-                if (this.id === myPlayerNum) {
-                    
-                    // JOYSTICK PHYSICS
+                if (this.id === myId) {
                     if (joystick.active) {
-                        let dx = joystick.x - joystick.startX;
-                        let dy = joystick.y - joystick.startY;
+                        let dx = joystick.x - joystick.startX, dy = joystick.y - joystick.startY;
                         let dist = Math.hypot(dx, dy);
-                        
-                        if (dist > 5) { // Small deadzone so resting thumb doesn't jitter
+                        if (dist > 5) {
                             this.angle = Math.atan2(dy, dx);
-                            // Thrust power based on how far joystick is pulled (max 0.45)
-                            let power = (dist / maxJoyRadius) * 0.45; 
-                            this.vx += Math.cos(this.angle) * power; 
-                            this.vy += Math.sin(this.angle) * power;
+                            let power = (dist / maxJoyRadius) * 0.45 * this.stats.speed; 
+                            this.vx += Math.cos(this.angle) * power; this.vy += Math.sin(this.angle) * power;
                         }
                     } else {
-                        // KEYBOARD FALLBACK
                         if (keys['KeyA']) this.angle -= 0.08;
                         if (keys['KeyD']) this.angle += 0.08;
                         if (keys['KeyW']) {
-                            this.vx += Math.cos(this.angle) * 0.45; this.vy += Math.sin(this.angle) * 0.45;
+                            this.vx += Math.cos(this.angle) * 0.45 * this.stats.speed; 
+                            this.vy += Math.sin(this.angle) * 0.45 * this.stats.speed;
                         }
                     }
 
-                    if ((isShooting || keys['Space']) && this.cooldown <= 0) {
-                        let bx = this.x + Math.cos(this.angle) * (this.size + 5);
-                        let by = this.y + Math.sin(this.angle) * (this.size + 5);
-                        bullets.push(new Bullet(bx, by, this.angle, this.color, this.id));
-                        socket.emit('shoot', {x: bx, y: by, angle: this.angle});
-                        this.cooldown = 15;
-                        this.vx -= Math.cos(this.angle) * 2;
-                        this.vy -= Math.sin(this.angle) * 2;
-                        shakeScreen(3, 5);
+                    if ((isAttacking || keys['Space']) && this.cooldown <= 0) {
+                        this.executeAttack();
                     }
                     if (this.cooldown > 0) this.cooldown--;
 
-                    this.vx *= 0.97; this.vy *= 0.97;
+                    this.vx *= 0.95; this.vy *= 0.95;
                     this.x += this.vx; this.y += this.vy;
                     
-                    if (this.x < this.size) { this.x = this.size; this.vx *= -0.5; }
-                    if (this.x > width - this.size) { this.x = width - this.size; this.vx *= -0.5; }
-                    if (this.y < this.size) { this.y = this.size; this.vy *= -0.5; }
-                    if (this.y > height - this.size) { this.y = height - this.size; this.vy *= -0.5; }
+                    // Boundaries
+                    if (this.x < this.stats.size) { this.x = this.stats.size; this.vx *= -0.5; }
+                    if (this.x > width - this.stats.size) { this.x = width - this.stats.size; this.vx *= -0.5; }
+                    if (this.y < this.stats.size) { this.y = this.stats.size; this.vy *= -0.5; }
+                    if (this.y > height - this.stats.size) { this.y = height - this.stats.size; this.vy *= -0.5; }
 
                     socket.emit('move', {x: this.x, y: this.y, angle: this.angle});
                 }
             }
-            die() {
-                this.dead = true; this.respawnTimer = 100;
-                shakeScreen(15, 20);
-                for(let i = 0; i < 50; i++) {
-                    particles.push(new Particle(this.x, this.y, this.color, 12, Math.random() * 4 + 2, 40));
-                    particles.push(new Particle(this.x, this.y, '#fff', 8, 2, 30));
+
+            executeAttack() {
+                this.cooldown = this.stats.cd;
+                let bx = this.x + Math.cos(this.angle) * (this.stats.size + 10);
+                let by = this.y + Math.sin(this.angle) * (this.stats.size + 10);
+
+                if (this.stats.type === 'shoot') {
+                    bullets.push(new Bullet(bx, by, this.angle, this.stats, this.id));
+                    socket.emit('action', {type: 'shoot', x: bx, y: by, angle: this.angle});
+                    this.vx -= Math.cos(this.angle) * 2; this.vy -= Math.sin(this.angle) * 2;
+                } else if (this.stats.type === 'dash') {
+                    // Melee Dash Character
+                    this.vx += Math.cos(this.angle) * this.stats.dashPower;
+                    this.vy += Math.sin(this.angle) * this.stats.dashPower;
+                    this.isDashing = true;
+                    createSparks(this.x, this.y, this.stats.color, 15);
+                    socket.emit('action', {type: 'dash', x: this.x, y: this.y, angle: this.angle});
+                    setTimeout(() => this.isDashing = false, 300); // Dash hitbox active for 300ms
+                }
+                shakeScreen(3, 5);
+            }
+
+            die(killerId) {
+                this.dead = true; this.respawnTimer = 150;
+                shakeScreen(10, 15);
+                createSparks(this.x, this.y, this.stats.color, 30);
+                if (killerId && killerId === myId) {
+                    // I got the kill, tell server
+                    socket.emit('scoredKill', myId);
                 }
             }
+
             respawn() {
                 this.dead = false; this.vx = 0; this.vy = 0;
-                this.x = this.id === 1 ? width * 0.1 : width * 0.9;
-                this.y = height / 2;
-                this.angle = this.id === 1 ? 0 : Math.PI;
+                this.x = Math.random() * width; this.y = Math.random() * height;
             }
+
             draw(ctx) {
                 if (this.dead) return;
+                
+                // Draw Username
+                ctx.fillStyle = "rgba(255,255,255,0.7)";
+                ctx.font = "10px Orbitron"; ctx.textAlign = "center";
+                ctx.fillText(this.username, this.x, this.y - this.stats.size - 10);
+
+                // Draw Character
                 ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
-                ctx.shadowBlur = 20; ctx.shadowColor = this.color;
-                ctx.strokeStyle = this.color; ctx.lineWidth = 3; ctx.fillStyle = '#111';
-                ctx.beginPath(); ctx.moveTo(this.size, 0); ctx.lineTo(-this.size, -this.size * 0.8); 
-                ctx.lineTo(-this.size * 0.4, 0); ctx.lineTo(-this.size, this.size * 0.8); 
-                ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+                ctx.shadowBlur = this.isDashing ? 20 : 10; 
+                ctx.shadowColor = this.stats.color;
+                ctx.strokeStyle = this.stats.color; ctx.lineWidth = 3; ctx.fillStyle = '#111';
+                ctx.beginPath(); 
+                ctx.moveTo(this.stats.size, 0); 
+                ctx.lineTo(-this.stats.size, -this.stats.size * 0.8); 
+                ctx.lineTo(-this.stats.size * 0.4, 0); 
+                ctx.lineTo(-this.stats.size, this.stats.size * 0.8); 
+                ctx.closePath(); ctx.fill(); ctx.stroke(); 
+                ctx.restore();
             }
-        }
-
-        let p1 = new Ship(100, window.innerHeight / 2, '#00f3ff', 1);
-        let p2 = new Ship(window.innerWidth - 100, window.innerHeight / 2, '#ff0055', 2);
-
-        function triggerWin(playerNum) {
-            gameActive = false;
-            winnerText.innerText = `PLAYER ${playerNum} WINS`;
-            winnerText.style.color = playerNum === 1 ? '#00f3ff' : '#ff0055';
-            announcement.style.opacity = 1;
-            
-            setTimeout(() => {
-                score = { p1: 0, p2: 0 };
-                score1El.innerText = '0'; score2El.innerText = '0';
-                p1.respawn(); p2.respawn();
-                bullets.length = 0; particles.length = 0;
-                announcement.style.opacity = 0;
-                gameActive = true;
-            }, 4000);
         }
 
         function drawGrid() {
@@ -390,53 +415,49 @@
             ctx.stroke();
         }
 
-        // --- DRAW VIRTUAL JOYSTICK ---
         function drawJoystick() {
             if (!joystick.active) return;
-            
             ctx.save();
-            ctx.globalCompositeOperation = 'source-over'; // Don't blend neon into white blob
-            
-            // Set color based on player
-            let joyColor = myPlayerNum === 1 ? 'rgba(0, 243, 255, ' : 'rgba(255, 0, 85, ';
-
-            // Draw outer circle
-            ctx.strokeStyle = joyColor + '0.3)';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.arc(joystick.startX, joystick.startY, maxJoyRadius, 0, Math.PI * 2);
-            ctx.stroke();
-
-            // Draw inner knob
-            ctx.fillStyle = joyColor + '0.7)';
-            ctx.beginPath();
-            ctx.arc(joystick.x, joystick.y, 20, 0, Math.PI * 2);
-            ctx.fill();
-
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(joystick.startX, joystick.startY, maxJoyRadius, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.beginPath(); ctx.arc(joystick.x, joystick.y, 20, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
         }
 
         function loop() {
-            if (!myPlayerNum) return; 
+            if (!gameActive) return;
 
-            // PHYSICS UPDATE
-            p1.update(); p2.update();
-            
+            const myPlayer = players[myId];
+            if(myPlayer) myPlayer.update();
+
+            // Handle Projectiles & Hit Detection
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i];
                 b.update();
                 if (b.life <= 0 || b.bounces < 0) { bullets.splice(i, 1); continue; }
 
-                // HIT DETECTION
-                if (!p1.dead && b.owner !== 1 && Math.hypot(b.x - p1.x, b.y - p1.y) < p1.size + b.radius) {
-                    p1.die(); score.p2++; score2El.innerText = score.p2; bullets.splice(i, 1);
-                    if (score.p2 >= WIN_SCORE) triggerWin(2);
-                    continue;
+                // Check bullet hitting players
+                for (let pid in players) {
+                    let p = players[pid];
+                    if (!p.dead && b.owner !== pid && Math.hypot(b.x - p.x, b.y - p.y) < p.stats.size + b.radius) {
+                        if(pid === myId) p.die(b.owner); // Only tell server if I died
+                        bullets.splice(i, 1);
+                        break;
+                    }
                 }
-                if (!p2.dead && b.owner !== 2 && Math.hypot(b.x - p2.x, b.y - p2.y) < p2.size + b.radius) {
-                    p2.die(); score.p1++; score1El.innerText = score.p1; bullets.splice(i, 1);
-                    if (score.p1 >= WIN_SCORE) triggerWin(1);
-                    continue;
+            }
+
+            // Handle Melee Dash Collisions
+            if(myPlayer && !myPlayer.dead && myPlayer.isDashing) {
+                for (let pid in players) {
+                    if(pid !== myId) {
+                        let p = players[pid];
+                        if (!p.dead && Math.hypot(myPlayer.x - p.x, myPlayer.y - p.y) < myPlayer.stats.size + p.stats.size) {
+                            // Local player dashes into someone else
+                            p.die(myId); 
+                        }
+                    }
                 }
             }
 
@@ -447,14 +468,12 @@
 
             if (shakeTime > 0) shakeTime--;
 
-            // RENDERING
+            // Rendering
             ctx.globalCompositeOperation = 'source-over'; 
-            ctx.fillStyle = 'rgba(5, 5, 8, 0.3)'; ctx.fillRect(0, 0, width, height);
+            ctx.fillStyle = 'rgba(5, 5, 8, 0.4)'; ctx.fillRect(0, 0, width, height);
 
             ctx.save();
-            if (shakeTime > 0) {
-                ctx.translate((Math.random() - 0.5) * shakeMagnitude, (Math.random() - 0.5) * shakeMagnitude);
-            }
+            if (shakeTime > 0) ctx.translate((Math.random() - 0.5) * shakeMagnitude, (Math.random() - 0.5) * shakeMagnitude);
 
             drawGrid();
             drawJoystick();
@@ -462,11 +481,11 @@
             ctx.globalCompositeOperation = 'lighter';
             particles.forEach(p => p.draw(ctx));
             bullets.forEach(b => b.draw(ctx));
-            p1.draw(ctx);
-            p2.draw(ctx);
+            
+            // Draw all players
+            for(let id in players) players[id].draw(ctx);
 
             ctx.restore();
-
             requestAnimationFrame(loop);
         }
     </script>
