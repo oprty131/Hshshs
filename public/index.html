@@ -3,543 +3,351 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BATTLEGROUNDS: VILTRUM</title>
+    <title>Lego Invincible Universe</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+        /* Base Reset & Typography */
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #111; overflow: hidden;
-            font-family: 'Montserrat', sans-serif; user-select: none;
+        body {
+            background: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        #gameCanvas { display: none; width: 100%; height: 100%; } 
 
-        /* UI Styling */
-        #login-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 50; background: radial-gradient(circle, #333 0%, #000 100%);
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 20px;
         }
-        .login-box {
-            background: rgba(20, 20, 20, 0.9); padding: 2rem; border-radius: 5px;
-            border: 2px solid #555; text-align: center; width: 80%; max-width: 400px;
-        }
-        .login-box h1 { color: #fff; font-weight: 900; margin-bottom: 20px; font-style: italic; }
-        input, select {
-            width: 85%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #666;
-            color: #fff; font-family: 'Montserrat', sans-serif; font-weight: bold; text-align: center;
-        }
-        button {
-            width: 100%; padding: 15px; margin-top: 15px; background: #fff; color: #000;
-            font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 1.2rem;
-            border: none; cursor: pointer; text-transform: uppercase;
-        }
-        button:hover { background: #ccc; }
 
-        /* Battlegrounds UI */
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
-            pointer-events: none; display: none;
+        .header h1 {
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            font-weight: 900;
+            margin: 0;
+            color: #fcd34d;
+            text-shadow: 4px 4px 0px #b91c1c, 0px 8px 0px #000;
+            letter-spacing: 2px;
+        }
+
+        /* Responsive Grid for Mobile & Desktop */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 25px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        /* 3D Roblox/Lego Style Card */
+        .card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 25px 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            user-select: none;
+            
+            /* The Plastic Brick Look */
+            border: 3px solid #020617;
+            box-shadow: 
+                inset -4px -4px 0px rgba(0,0,0,0.4), 
+                inset 4px 4px 0px rgba(255,255,255,0.1), 
+                0 10px 0px #020617;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        /* Mobile Tap / Click Animation */
+        .card:active {
+            transform: translateY(10px);
+            box-shadow: 
+                inset -4px -4px 0px rgba(0,0,0,0.4), 
+                inset 4px 4px 0px rgba(255,255,255,0.1), 
+                0 0px 0px #020617;
+        }
+
+        /* Pure CSS Minifigure Design */
+        .minifig {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 4px 2px rgba(0,0,0,0.5));
+        }
+
+        .head {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            border: 2px solid #000;
+            margin-bottom: 2px;
+            position: relative;
         }
         
-        #leaderboard {
-            position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6);
-            padding: 10px; color: white; font-weight: bold; min-width: 150px; text-align: right; border-radius: 5px;
+        /* Lego head stud */
+        .head::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 4px;
+            border: 2px solid #000;
+            border-bottom: none;
+            border-radius: 3px 3px 0 0;
+            background: inherit;
         }
 
-        /* Hotbar */
-        #hotbar {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 10px;
-        }
-        .slot {
-            width: 60px; height: 60px; background: rgba(0,0,0,0.7); border: 2px solid #555;
-            border-radius: 5px; display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: bold; position: relative; overflow: hidden;
-        }
-        .slot .key { position: absolute; top: 2px; left: 4px; font-size: 10px; color: #aaa; }
-        .slot .cd-overlay {
-            position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(255,0,0,0.5); height: 0%;
+        .torso-wrapper {
+            position: relative;
+            display: flex;
+            justify-content: center;
         }
 
-        #health-bar-container {
-            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
-            width: 400px; height: 20px; background: #222; border: 2px solid #000;
+        .torso {
+            width: 50px;
+            height: 45px;
+            border-radius: 4px 4px 0 0;
+            border: 2px solid #000;
+            z-index: 2;
         }
-        #health-bar-fill {
-            width: 100%; height: 100%; background: #2ecc71; transition: width 0.1s;
+
+        .arm {
+            width: 14px;
+            height: 36px;
+            border: 2px solid #000;
+            border-radius: 10px;
+            position: absolute;
+            top: 4px;
+            z-index: 1;
+        }
+
+        .arm.left { right: 100%; margin-right: -6px; transform: rotate(15deg); }
+        .arm.right { left: 100%; margin-left: -6px; transform: rotate(-15deg); }
+
+        .legs {
+            width: 50px;
+            height: 30px;
+            border: 2px solid #000;
+            border-top: none;
+            display: flex;
+        }
+
+        .leg {
+            width: 50%;
+            height: 100%;
+            border-right: 1px solid #000;
+        }
+        .leg:last-child { border-right: none; border-left: 1px solid #000; }
+
+        .char-name {
+            font-weight: 800;
+            font-size: 1.1rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #cbd5e1;
+        }
+
+        /* Modern Polished Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(4px);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            border: 4px solid #334155;
+            box-shadow: 
+                inset -6px -6px 0px rgba(0,0,0,0.3), 
+                0 25px 50px -12px rgba(0,0,0,0.5);
+            position: relative;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .close-btn {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            background: #ef4444;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            border: 3px solid #020617;
+            box-shadow: 0 4px 0px #020617;
         }
         
-        #controls-hint {
-            position: absolute; bottom: 130px; left: 50%; transform: translateX(-50%);
-            color: white; font-size: 12px; font-weight: bold; text-shadow: 1px 1px 0 #000;
+        .close-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0px #020617;
+        }
+
+        .modal-title {
+            font-size: 2.2rem;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            font-weight: 900;
+            color: #fcd34d;
+        }
+
+        .modal-desc {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #94a3b8;
         }
     </style>
 </head>
 <body>
 
-    <div id="login-screen">
-        <div class="login-box">
-            <h1>VILTRUM BATTLES</h1>
-            <input type="text" id="usernameInput" placeholder="USERNAME" maxlength="12">
-            <input type="text" id="roomInput" placeholder="SERVER CODE" maxlength="10">
-            <select id="charSelect">
-                <option value="omniman">Omni-Man (Heavy Brawler)</option>
-                <option value="invincible">Invincible (Speed/Combo)</option>
-            </select>
-            <button id="joinBtn">PLAY</button>
-        </div>
+    <div class="header">
+        <h1>Blocks of Earth</h1>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="ui-layer">
-        <div id="leaderboard"><div id="lb-list"></div></div>
-        
-        <div id="controls-hint">LMB: M1 Combo | Q: Dash</div>
+    <div class="grid-container" id="roster"></div>
 
-        <div id="health-bar-container"><div id="health-bar-fill"></div></div>
-
-        <div id="hotbar">
-            <div class="slot" id="slot1"><div class="key">1</div><span id="name1"></span><div class="cd-overlay" id="cd1"></div></div>
-            <div class="slot" id="slot2"><div class="key">2</div><span id="name2"></span><div class="cd-overlay" id="cd2"></div></div>
-            <div class="slot" id="slot3"><div class="key">3</div><span id="name3"></span><div class="cd-overlay" id="cd3"></div></div>
-            <div class="slot" id="slot4"><div class="key">4</div><span id="name4"></span><div class="cd-overlay" id="cd4"></div></div>
+    <div class="modal" id="charModal">
+        <div class="modal-content">
+            <div class="close-btn" onclick="closeModal()">X</div>
+            <div class="minifig" id="modalMinifig" style="transform: scale(1.5); margin-bottom: 40px; margin-top: 20px;"></div>
+            <h2 class="modal-title" id="modalTitle">Name</h2>
+            <p class="modal-desc" id="modalDesc">Description goes here.</p>
         </div>
     </div>
-
-    <script src="/socket.io/socket.io.js"></script>
 
     <script>
-        const socket = io();
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        let width, height, myId = null;
-        let gameActive = false;
-        
-        // Camera for the Battlegrounds feel
-        let camera = { x: 0, y: 0 };
-        let shakeTime = 0, shakeMagnitude = 0;
-
-        // Character Data (Battlegrounds Style)
-        const CHAR_DATA = {
-            'omniman': {
-                color: '#e74c3c', speed: 4, size: 20, maxHp: 150,
-                moves: [
-                    { name: 'Slam', cd: 300, color: '#c0392b' },       // 1
-                    { name: 'Clap', cd: 400, color: '#d35400' },       // 2
-                    { name: 'Grab', cd: 600, color: '#8e44ad' },       // 3
-                    { name: 'Think!', cd: 1000, color: '#f1c40f' }     // 4
-                ]
+        // Character Database (Expanded Roster)
+        const characters = [
+            {
+                name: "Invincible",
+                desc: "Mark Grayson. Viltrumite-Human hybrid. Tries his best to protect Earth, but usually gets beaten up first.",
+                colors: { head: "#fcd34d", torso: "#3b82f6", arm: "#eab308", legs: "#3b82f6" }
             },
-            'invincible': {
-                color: '#3498db', speed: 5.5, size: 18, maxHp: 100,
-                moves: [
-                    { name: 'Knee', cd: 250, color: '#2980b9' },       // 1
-                    { name: 'Flurry', cd: 350, color: '#f39c12' },     // 2
-                    { name: 'Tackle', cd: 450, color: '#e67e22' },     // 3
-                    { name: 'Rage', cd: 1200, color: '#e74c3c' }       // 4
-                ]
+            {
+                name: "Omni-Man",
+                desc: "Nolan Grayson. Earth's greatest protector... until he wasn't. Loves his wife like a pet.",
+                colors: { head: "#fcd34d", torso: "#ef4444", arm: "#ef4444", legs: "#ef4444" }
+            },
+            {
+                name: "Atom Eve",
+                desc: "Samantha Eve Wilkins. Can manipulate matter at the subatomic level. Refuses to wear standard superhero spandex.",
+                colors: { head: "#fcd34d", torso: "#ec4899", arm: "#fbcfe8", legs: "#ec4899" }
+            },
+            {
+                name: "Tech Jacket",
+                desc: "Zack Thompson. Bonded with a Geldarian combat armor. Basically a walking tank from space.",
+                colors: { head: "#94a3b8", torso: "#cbd5e1", arm: "#3b82f6", legs: "#cbd5e1" }
+            },
+            {
+                name: "Thragg",
+                desc: "Grand Regent of the Viltrumite Empire. The strongest of them all. Has a serious temper problem.",
+                colors: { head: "#fcd34d", torso: "#ffffff", arm: "#ef4444", legs: "#ffffff" }
+            },
+            {
+                name: "Allen",
+                desc: "Allen the Alien. Champion Evaluation Officer for the Coalition of Planets. Gets stronger every time he gets beaten to a pulp.",
+                colors: { head: "#f97316", torso: "#a855f7", arm: "#f97316", legs: "#a855f7" }
+            },
+            {
+                name: "Battle Beast",
+                desc: "Thokk. Roams the universe searching for worthy adversaries. Will fight literally anyone.",
+                colors: { head: "#8b5cf6", torso: "#b45309", arm: "#d97706", legs: "#b45309" }
             }
-        };
+        ];
 
-        const players = {};
-        const hitboxes = [];
-        const particles = [];
-        
-        // Local state
-        const keys = {};
-        let mouseX = 0, mouseY = 0;
-        let mapSize = 2000;
+        const rosterContainer = document.getElementById('roster');
 
-        // Join Game
-        document.getElementById('joinBtn').addEventListener('click', () => {
-            const user = document.getElementById('usernameInput').value || 'Guest';
-            const room = document.getElementById('roomInput').value || 'MAIN';
-            const char = document.getElementById('charSelect').value;
-            socket.emit('joinRoom', { username: user, room: room, character: char });
-        });
+        // Generate Minifigure HTML
+        function createMinifig(colors) {
+            return `
+                <div class="head" style="background: ${colors.head};"></div>
+                <div class="torso-wrapper">
+                    <div class="arm left" style="background: ${colors.arm};"></div>
+                    <div class="torso" style="background: ${colors.torso};"></div>
+                    <div class="arm right" style="background: ${colors.arm};"></div>
+                </div>
+                <div class="legs">
+                    <div class="leg" style="background: ${colors.legs};"></div>
+                    <div class="leg" style="background: ${colors.legs};"></div>
+                </div>
+            `;
+        }
 
-        socket.on('init', (data) => {
-            myId = data.id;
-            for (let id in data.players) {
-                players[id] = new Player(data.players[id]);
-            }
+        // Render Cards
+        characters.forEach((char, index) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = () => openModal(index);
             
-            // Setup UI
-            const myChar = CHAR_DATA[players[myId].character];
-            for(let i=0; i<4; i++) {
-                document.getElementById(`name${i+1}`).innerText = myChar.moves[i].name;
-                document.getElementById(`name${i+1}`).style.fontSize = '10px';
-            }
-
-            document.getElementById('login-screen').style.display = 'none';
-            canvas.style.display = 'block';
-            document.getElementById('ui-layer').style.display = 'block';
-            gameActive = true;
-            resize(); loop();
+            card.innerHTML = `
+                <div class="minifig">
+                    ${createMinifig(char.colors)}
+                </div>
+                <div class="char-name">${char.name}</div>
+            `;
+            rosterContainer.appendChild(card);
         });
 
-        socket.on('playerJoined', (pData) => players[pData.id] = new Player(pData));
-        socket.on('playerLeft', (id) => delete players[id]);
-        
-        socket.on('opponentMoved', (data) => {
-            if(players[data.id]) {
-                players[data.id].x = data.x; players[data.id].y = data.y;
-                players[data.id].angle = data.angle;
-            }
-        });
+        // Modal Logic
+        const modal = document.getElementById('charModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalDesc = document.getElementById('modalDesc');
+        const modalMinifig = document.getElementById('modalMinifig');
 
-        socket.on('opponentAction', (data) => {
-            if(!players[data.id]) return;
-            const p = players[data.id];
-            
-            // Replicate visual effects of opponent actions
-            if (data.type === 'm1') createHitEffect(data.x, data.y, p.charData.color, 5);
-            if (data.type === 'dash') createHitEffect(p.x, p.y, '#fff', 10);
-            if (data.type === 'hitbox') {
-                hitboxes.push(new Hitbox(data.x, data.y, data.radius, data.life, data.color));
-            }
-        });
-
-        // Health and Damage Sync
-        socket.on('playerDamaged', (data) => {
-            if(players[data.targetId]) {
-                players[data.targetId].hp = data.hp;
-                
-                // Knockback and stun
-                if(data.knockback) {
-                    players[data.targetId].vx = data.knockback.vx;
-                    players[data.targetId].vy = data.knockback.vy;
-                    players[data.targetId].stunTimer = 15; // 15 frames of stun
-                }
-                
-                createHitEffect(players[data.targetId].x, players[data.targetId].y, '#f00', 10);
-                if (data.targetId === myId) shakeScreen(5, 10); // Shake my screen if I get hit
-            }
-        });
-
-        socket.on('playerDied', (data) => {
-            if(players[data.victimId]) {
-                players[data.victimId].isDead = true;
-                createHitEffect(players[data.victimId].x, players[data.victimId].y, '#f00', 40);
-                if(data.victimId === myId) shakeScreen(15, 20);
-            }
-        });
-
-        socket.on('playerRespawned', (id) => {
-            if(players[id]) {
-                players[id].isDead = false;
-                players[id].hp = players[id].charData.maxHp;
-                if(id === myId) {
-                    players[myId].x = mapSize/2; players[myId].y = mapSize/2;
-                }
-            }
-        });
-
-        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
-        window.addEventListener('resize', resize);
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
-        window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
-
-        // M1 Click
-        window.addEventListener('mousedown', (e) => {
-            if(e.button === 0 && gameActive && !players[myId].isDead && players[myId].stunTimer <= 0) {
-                players[myId].doM1();
-            }
-        });
-
-        function shakeScreen(magnitude, time) { shakeMagnitude = magnitude; shakeTime = time; }
-
-        function createHitEffect(x, y, color, count) {
-            for(let i=0; i<count; i++) particles.push(new Particle(x, y, color));
+        function openModal(index) {
+            const char = characters[index];
+            modalTitle.innerText = char.name;
+            modalDesc.innerText = char.desc;
+            modalMinifig.innerHTML = createMinifig(char.colors);
+            modal.style.display = 'flex';
         }
 
-        class Particle {
-            constructor(x, y, color) {
-                this.x = x; this.y = y; this.color = color;
-                this.vx = (Math.random()-0.5)*10; this.vy = (Math.random()-0.5)*10;
-                this.life = 20; this.maxLife = 20;
-            }
-            update() { this.x+=this.vx; this.y+=this.vy; this.vx*=0.9; this.vy*=0.9; this.life--; }
-            draw(ctx) {
-                ctx.globalAlpha = this.life/this.maxLife; ctx.fillStyle = this.color;
-                ctx.fillRect(this.x-2, this.y-2, 4, 4); ctx.globalAlpha = 1;
-            }
+        function closeModal() {
+            modal.style.display = 'none';
         }
 
-        // Hitbox system for melee and AoE
-        class Hitbox {
-            constructor(x, y, radius, life, color, ownerId = null, damage = 0, knockbackMult = 0) {
-                this.x = x; this.y = y; this.radius = radius; this.life = life; this.color = color;
-                this.ownerId = ownerId; this.damage = damage; this.knockbackMult = knockbackMult;
-                this.hitSet = new Set(); // Who has been hit
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                closeModal();
             }
-            update() {
-                this.life--;
-                // Local hit detection (Only attacker calculates to prevent double-hits)
-                if (this.ownerId === myId) {
-                    for (let id in players) {
-                        if (id !== myId && !players[id].isDead && !this.hitSet.has(id)) {
-                            let p = players[id];
-                            if (Math.hypot(this.x - p.x, this.y - p.y) < this.radius + p.charData.size) {
-                                this.hitSet.add(id);
-                                // Calculate knockback trajectory
-                                let angle = Math.atan2(p.y - this.y, p.x - this.x);
-                                let kb = { vx: Math.cos(angle) * this.knockbackMult, vy: Math.sin(angle) * this.knockbackMult };
-                                
-                                // Tell Server we hit them
-                                socket.emit('dealDamage', { targetId: id, amount: this.damage, knockback: kb });
-                            }
-                        }
-                    }
-                }
-            }
-            draw(ctx) {
-                ctx.fillStyle = this.color; ctx.globalAlpha = 0.3;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
-                ctx.globalAlpha = 1;
-            }
-        }
-
-        class Player {
-            constructor(data) {
-                this.id = data.id; this.username = data.username; 
-                this.character = data.character; this.charData = CHAR_DATA[this.character];
-                this.x = mapSize/2; this.y = mapSize/2; this.vx = 0; this.vy = 0; this.angle = 0;
-                this.hp = data.hp; this.isDead = data.isDead;
-                
-                // Combat States
-                this.stunTimer = 0;
-                this.m1Combo = 0; this.m1Timer = 0; this.m1Cooldown = 0;
-                this.dashCooldown = 0;
-                this.abilityCooldowns = [0, 0, 0, 0];
-                this.activeAction = 0; // Frames locked into an animation
-            }
-
-            update() {
-                if (this.isDead) return;
-
-                // Timers
-                if(this.stunTimer > 0) this.stunTimer--;
-                if(this.m1Cooldown > 0) this.m1Cooldown--;
-                if(this.m1Timer > 0) {
-                    this.m1Timer--;
-                    if(this.m1Timer <= 0) this.m1Combo = 0; // Reset combo if wait too long
-                }
-                if(this.dashCooldown > 0) this.dashCooldown--;
-                if(this.activeAction > 0) this.activeAction--;
-                for(let i=0; i<4; i++) if(this.abilityCooldowns[i] > 0) this.abilityCooldowns[i]--;
-
-                if (this.id === myId) {
-                    // Update hotbar UI
-                    for(let i=0; i<4; i++) {
-                        let perc = (this.abilityCooldowns[i] / this.charData.moves[i].cd) * 100;
-                        document.getElementById(`cd${i+1}`).style.height = `${perc}%`;
-                    }
-                    
-                    // Update Health UI
-                    let hpPerc = (this.hp / this.charData.maxHp) * 100;
-                    document.getElementById('health-bar-fill').style.width = `${Math.max(0, hpPerc)}%`;
-
-                    // Movement (Only if not stunned and not doing heavy attack)
-                    let speed = this.charData.speed;
-                    if (this.stunTimer <= 0 && this.activeAction <= 0) {
-                        let dx = 0, dy = 0;
-                        if (keys['KeyW']) dy -= 1; if (keys['KeyS']) dy += 1;
-                        if (keys['KeyA']) dx -= 1; if (keys['KeyD']) dx += 1;
-                        
-                        if (dx !== 0 || dy !== 0) {
-                            let len = Math.hypot(dx, dy);
-                            this.vx += (dx / len) * speed * 0.2;
-                            this.vy += (dy / len) * speed * 0.2;
-                        }
-
-                        // Mouse aim
-                        let screenX = this.x - camera.x; let screenY = this.y - camera.y;
-                        this.angle = Math.atan2(mouseY - screenY, mouseX - screenX);
-
-                        // Dash (Q)
-                        if (keys['KeyQ'] && this.dashCooldown <= 0) {
-                            this.dashCooldown = 150; // 2.5 seconds
-                            let dX = dx || Math.cos(this.angle); let dY = dy || Math.sin(this.angle);
-                            this.vx = dX * 25; this.vy = dY * 25;
-                            socket.emit('action', { type: 'dash' });
-                            createHitEffect(this.x, this.y, '#fff', 15);
-                        }
-
-                        // Abilities (1, 2, 3, 4)
-                        if (keys['Digit1'] && this.abilityCooldowns[0] <= 0) this.useAbility(0);
-                        if (keys['Digit2'] && this.abilityCooldowns[1] <= 0) this.useAbility(1);
-                        if (keys['Digit3'] && this.abilityCooldowns[2] <= 0) this.useAbility(2);
-                        if (keys['Digit4'] && this.abilityCooldowns[3] <= 0) this.useAbility(3);
-                    }
-
-                    // Physics / Friction
-                    this.vx *= 0.85; this.vy *= 0.85;
-                    this.x += this.vx; this.y += this.vy;
-                    
-                    // Map Bounds
-                    if(this.x < 0) this.x = 0; if(this.x > mapSize) this.x = mapSize;
-                    if(this.y < 0) this.y = 0; if(this.y > mapSize) this.y = mapSize;
-
-                    // Send position to server
-                    socket.emit('move', { x: this.x, y: this.y, angle: this.angle });
-                }
-            }
-
-            doM1() {
-                if (this.m1Cooldown > 0) return;
-                
-                this.m1Combo++;
-                let isFinisher = this.m1Combo >= 4;
-                let dmg = isFinisher ? 15 : 5;
-                let kb = isFinisher ? 20 : 5;
-                
-                // M1 Step forward
-                this.vx += Math.cos(this.angle) * 8;
-                this.vy += Math.sin(this.angle) * 8;
-                
-                // Spawn Hitbox directly in front
-                let hx = this.x + Math.cos(this.angle) * 30;
-                let hy = this.y + Math.sin(this.angle) * 30;
-                let radius = isFinisher ? 40 : 25;
-                
-                hitboxes.push(new Hitbox(hx, hy, radius, 10, '#fff', this.id, dmg, kb));
-                
-                // Broadcast visuals
-                socket.emit('action', { type: 'm1', x: hx, y: hy });
-                socket.emit('action', { type: 'hitbox', x: hx, y: hy, radius: radius, life: 10, color: '#fff' });
-
-                // Cooldowns and resets
-                this.m1Cooldown = 20; // Time between punches
-                this.m1Timer = 90; // Time before combo drops (1.5 sec)
-                if (isFinisher) {
-                    this.m1Combo = 0;
-                    this.m1Cooldown = 60; // Longer recovery after finisher
-                    shakeScreen(5, 10);
-                }
-            }
-
-            useAbility(index) {
-                this.abilityCooldowns[index] = this.charData.moves[index].cd;
-                this.activeAction = 30; // Lock movement for half a second
-                
-                let hx, hy;
-                
-                if (this.character === 'omniman') {
-                    if (index === 0) { // Slam
-                        hx = this.x + Math.cos(this.angle)*40; hy = this.y + Math.sin(this.angle)*40;
-                        hitboxes.push(new Hitbox(hx, hy, 60, 15, '#c0392b', this.id, 25, 30));
-                        socket.emit('action', { type: 'hitbox', x: hx, y: hy, radius: 60, life: 15, color: '#c0392b' });
-                        shakeScreen(15, 15);
-                    } else if (index === 1) { // Clap (Cone in front)
-                        hx = this.x + Math.cos(this.angle)*60; hy = this.y + Math.sin(this.angle)*60;
-                        hitboxes.push(new Hitbox(hx, hy, 80, 10, '#fff', this.id, 20, 15));
-                        socket.emit('action', { type: 'hitbox', x: hx, y: hy, radius: 80, life: 10, color: '#fff' });
-                    }
-                    // Add logic for moves 3 and 4 here...
-                } else if (this.character === 'invincible') {
-                    if (index === 0) { // Knee Dash
-                        this.vx = Math.cos(this.angle) * 35; this.vy = Math.sin(this.angle) * 35;
-                        hitboxes.push(new Hitbox(this.x, this.y, 40, 20, '#2980b9', this.id, 15, 10)); // Hitbox follows him
-                    } else if (index === 1) { // Flurry
-                        this.activeAction = 60;
-                        // Spawn multiple hitboxes over time (simplified)
-                        hx = this.x + Math.cos(this.angle)*35; hy = this.y + Math.sin(this.angle)*35;
-                        hitboxes.push(new Hitbox(hx, hy, 50, 60, '#f39c12', this.id, 30, 5));
-                        socket.emit('action', { type: 'hitbox', x: hx, y: hy, radius: 50, life: 60, color: '#f39c12' });
-                    }
-                }
-            }
-
-            draw(ctx) {
-                if (this.isDead) return;
-
-                let drawX = this.x - camera.x; let drawY = this.y - camera.y;
-
-                // Draw Roblox-ish Top-Down avatar (Square shoulders, round head)
-                ctx.save(); ctx.translate(drawX, drawY); ctx.rotate(this.angle);
-                
-                // Shoulders/Body
-                ctx.fillStyle = this.charData.color;
-                ctx.fillRect(-this.charData.size, -this.charData.size*0.8, this.charData.size*2, this.charData.size*1.6);
-                
-                // Head
-                ctx.fillStyle = '#f1c27d'; // Skin tone
-                ctx.beginPath(); ctx.arc(0, 0, this.charData.size*0.7, 0, Math.PI*2); ctx.fill();
-                
-                // Direction indicator (nose/eyes)
-                ctx.fillStyle = '#000';
-                ctx.fillRect(this.charData.size*0.4, -4, 6, 8);
-
-                ctx.restore();
-
-                // Name & HP Bar
-                ctx.fillStyle = "#fff"; ctx.font = "12px Montserrat"; ctx.textAlign = "center";
-                ctx.fillText(this.username, drawX, drawY - this.charData.size - 15);
-                
-                ctx.fillStyle = "#f00"; ctx.fillRect(drawX - 20, drawY - this.charData.size - 10, 40, 4);
-                ctx.fillStyle = "#0f0"; ctx.fillRect(drawX - 20, drawY - this.charData.size - 10, 40 * (this.hp/this.charData.maxHp), 4);
-            }
-        }
-
-        function drawGrid() {
-            ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
-            let startX = -camera.x % 100; let startY = -camera.y % 100;
-            ctx.beginPath();
-            for (let x = startX; x < width; x += 100) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
-            for (let y = startY; y < height; y += 100) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
-            ctx.stroke();
-            
-            // Draw map boundaries
-            ctx.strokeStyle = '#f00'; ctx.lineWidth = 5;
-            ctx.strokeRect(-camera.x, -camera.y, mapSize, mapSize);
-        }
-
-        function loop() {
-            if (!gameActive) return;
-
-            // Camera Follows Player
-            if(players[myId]) {
-                camera.x += (players[myId].x - width/2 - camera.x) * 0.1;
-                camera.y += (players[myId].y - height/2 - camera.y) * 0.1;
-            }
-
-            for(let id in players) players[id].update();
-            for (let i = hitboxes.length - 1; i >= 0; i--) {
-                hitboxes[i].update();
-                if (hitboxes[i].life <= 0) hitboxes.splice(i, 1);
-            }
-            for (let i = particles.length - 1; i >= 0; i--) {
-                particles[i].update();
-                if (particles[i].life <= 0) particles.splice(i, 1);
-            }
-
-            if (shakeTime > 0) shakeTime--;
-
-            // Draw
-            ctx.fillStyle = '#111'; ctx.fillRect(0, 0, width, height);
-
-            ctx.save();
-            if (shakeTime > 0) ctx.translate((Math.random() - 0.5) * shakeMagnitude, (Math.random() - 0.5) * shakeMagnitude);
-
-            drawGrid();
-
-            // Translate everything else by camera
-            hitboxes.forEach(h => {
-                ctx.save(); ctx.translate(-camera.x, -camera.y); h.draw(ctx); ctx.restore();
-            });
-            particles.forEach(p => {
-                ctx.save(); ctx.translate(-camera.x, -camera.y); p.draw(ctx); ctx.restore();
-            });
-            
-            for(let id in players) players[id].draw(ctx);
-
-            ctx.restore();
-            requestAnimationFrame(loop);
         }
     </script>
 </body>
