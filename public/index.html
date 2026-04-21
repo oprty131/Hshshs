@@ -2,218 +2,349 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lego Invincible Battlegrounds</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invincible Battlegrounds</title>
     <script src="/socket.io/socket.io.js"></script>
-
     <style>
-        /* Base Reset */
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; background: #0f172a; color: white; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
-
-        /* The Game Arena */
-        #arena {
-            flex-grow: 1;
-            position: relative;
-            background: radial-gradient(circle, #1e293b 0%, #020617 100%);
-            overflow: hidden;
-            border-bottom: 4px solid #334155;
-        }
-
-        /* Player Container (Absolute Positioning) */
-        .player {
-            position: absolute;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            /* Smooth movement interpolation */
-            transition: transform 0.05s linear;
-            transform: translate(-50%, -50%); /* Center origin */
-        }
-
-        .player-name {
-            font-size: 0.8rem;
-            font-weight: bold;
-            color: #fcd34d;
-            text-shadow: 1px 1px 0 #000;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-
-        /* Pure CSS Minifigure Design */
-        .head { width: 30px; height: 30px; border-radius: 6px; border: 2px solid #000; margin-bottom: 2px; position: relative; background: #fcd34d; }
-        .head::before { content: ''; position: absolute; top: -5px; left: 50%; transform: translateX(-50%); width: 12px; height: 3px; border: 2px solid #000; border-bottom: none; border-radius: 2px 2px 0 0; background: inherit; }
-        .torso-wrapper { position: relative; display: flex; justify-content: center; }
-        .torso { width: 40px; height: 35px; border-radius: 3px 3px 0 0; border: 2px solid #000; z-index: 2; background: #3b82f6; }
-        .arm { width: 12px; height: 28px; border: 2px solid #000; border-radius: 10px; position: absolute; top: 3px; z-index: 1; background: #eab308; }
-        .arm.left { right: 100%; margin-right: -4px; transform: rotate(15deg); }
-        .arm.right { left: 100%; margin-left: -4px; transform: rotate(-15deg); }
-        .legs { width: 40px; height: 25px; border: 2px solid #000; border-top: none; display: flex; }
-        .leg { width: 50%; height: 100%; border-right: 1px solid #000; background: #3b82f6; }
-        .leg:last-child { border-right: none; border-left: 1px solid #000; }
-
-        /* Mobile D-Pad Controls */
-        #controls {
-            height: 200px;
-            background: #1e293b;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            gap: 10px;
-            padding: 20px;
-            justify-items: center;
-            align-items: center;
-            max-width: 300px;
-            margin: 0 auto;
-        }
-
-        .btn {
-            background: #334155;
-            border: 3px solid #020617;
-            border-radius: 12px;
-            width: 60px;
-            height: 60px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.5rem;
-            color: #94a3b8;
-            box-shadow: inset -3px -3px 0px rgba(0,0,0,0.5), 0 6px 0px #020617;
-            cursor: pointer;
-        }
-
-        .btn:active {
-            transform: translateY(6px);
-            box-shadow: inset -3px -3px 0px rgba(0,0,0,0.5), 0 0px 0px #020617;
-            background: #475569;
-        }
-
-        #up { grid-column: 2; grid-row: 1; }
-        #left { grid-column: 1; grid-row: 2; }
-        #down { grid-column: 2; grid-row: 3; }
-        #right { grid-column: 3; grid-row: 2; }
-
+        body { margin: 0; overflow: hidden; background: #0f172a; color: white; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        #gameCanvas { display: none; background: #1e293b; }
+        
+        /* UI Overlays */
+        #uiLayer { display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 600px; text-align: center; pointer-events: none; }
+        .hud-bar { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+        .move-box { width: 60px; height: 60px; background: rgba(0,0,0,0.6); border: 2px solid #334155; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-weight: bold; position: relative; }
+        .cooldown-overlay { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(239, 68, 68, 0.5); height: 0%; transition: height 0.1s linear; }
+        
+        /* Character Select Screen */
+        #menu { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        .char-btn { background: #334155; border: 3px solid #000; color: white; padding: 15px 30px; margin: 10px; font-size: 1.5rem; cursor: pointer; border-radius: 8px; font-weight: bold; text-transform: uppercase; width: 300px; transition: transform 0.1s;}
+        .char-btn:active { transform: translateY(4px); }
+        .char-btn.mark { border-color: #3b82f6; }
+        .char-btn.nolan { border-color: #ef4444; }
+        .char-btn.eve { border-color: #ec4899; }
+        input { padding: 10px; font-size: 1.2rem; margin-bottom: 20px; text-align: center; }
     </style>
 </head>
 <body>
 
-    <div id="arena"></div>
+    <div id="menu">
+        <h1 style="color: #fcd34d; text-shadow: 3px 3px 0 #b91c1c;">INVINCIBLE BATTLEGROUNDS</h1>
+        <input type="text" id="usernameInput" placeholder="Enter Username" maxlength="10">
+        <button class="char-btn mark" onclick="joinGame('Invincible')">Invincible</button>
+        <button class="char-btn nolan" onclick="joinGame('Omni-Man')">Omni-Man</button>
+        <button class="char-btn eve" onclick="joinGame('Atom Eve')">Atom Eve</button>
+    </div>
 
-    <div id="controls">
-        <div class="btn" id="up">▲</div>
-        <div class="btn" id="left">◀</div>
-        <div class="btn" id="down">▼</div>
-        <div class="btn" id="right">▶</div>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="uiLayer">
+        <div style="font-size: 20px; margin-bottom: 5px;">Controls: WASD (Move) | Click (M1) | Q (Dash) | 1, 2, 3, 4 (Abilities)</div>
+        <div class="hud-bar" id="movesHud">
+            </div>
     </div>
 
     <script>
         const socket = io();
-        const arena = document.getElementById('arena');
-        const playersData = {}; // Stores DOM elements
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let myId = null;
+        let myChar = null;
+        let arenaSize = 1000;
 
-        // --- MULTIPLAYER NETWORKING ---
-
-        // When we first connect, load all existing players
-        socket.on('currentPlayers', (players) => {
-            Object.keys(players).forEach(id => {
-                addPlayerToArena(players[id]);
-            });
-        });
-
-        // When a new player joins, add them
-        socket.on('newPlayer', (playerInfo) => {
-            addPlayerToArena(playerInfo);
-        });
-
-        // When a player moves, update their position on screen
-        socket.on('playerMoved', (playerInfo) => {
-            if (playersData[playerInfo.id]) {
-                const el = playersData[playerInfo.id];
-                el.style.transform = `translate(calc(${playerInfo.x}px - 50%), calc(${playerInfo.y}px - 50%))`;
-            }
-        });
-
-        // When a player leaves, remove their element
-        socket.on('playerDisconnected', (playerId) => {
-            if (playersData[playerId]) {
-                playersData[playerId].remove();
-                delete playersData[playerId];
-            }
-        });
-
-        // --- RENDERING ---
-
-        function addPlayerToArena(playerInfo) {
-            const playerEl = document.createElement('div');
-            playerEl.className = 'player';
-            playerEl.id = playerInfo.id;
-            
-            // Render the Lego character
-            playerEl.innerHTML = `
-                <div class="player-name">${playerInfo.id === socket.id ? 'YOU' : 'Enemy'}</div>
-                <div class="head"></div>
-                <div class="torso-wrapper">
-                    <div class="arm left"></div>
-                    <div class="torso"></div>
-                    <div class="arm right"></div>
-                </div>
-                <div class="legs">
-                    <div class="leg"></div>
-                    <div class="leg"></div>
-                </div>
-            `;
-            
-            playerEl.style.transform = `translate(calc(${playerInfo.x}px - 50%), calc(${playerInfo.y}px - 50%))`;
-            arena.appendChild(playerEl);
-            playersData[playerInfo.id] = playerEl;
-        }
-
-        // --- MOVEMENT CONTROLS ---
-
-        let myX = window.innerWidth / 2; // Start in middle of screen
-        let myY = 150; 
-        const speed = 10;
+        // Game State
+        let players = {};
+        let projectiles = [];
+        let visuals = [];
         
+        // Input State
         const keys = { w: false, a: false, s: false, d: false };
+        let mouseX = 0, mouseY = 0;
+        let camera = { x: 0, y: 0 };
 
-        // Keyboard support for desktop testing
-        window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
-        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
-
-        // Mobile D-Pad Support (Touch & Mouse)
-        const bindButton = (id, key) => {
-            const btn = document.getElementById(id);
-            btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; });
-            btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[key] = false; });
-            btn.addEventListener('mousedown', () => keys[key] = true);
-            btn.addEventListener('mouseup', () => keys[key] = false);
-            btn.addEventListener('mouseleave', () => keys[key] = false);
+        // Moveset Database
+        const MOVESETS = {
+            'Invincible': [
+                { id: '1', name: 'Tackle', cd: 5, cdTimer: 0, act: () => doDashAttack(40, 15, 20) },
+                { id: '2', name: 'Ground Smash', cd: 8, cdTimer: 0, act: () => doAoE(60, 20) },
+                { id: '3', name: 'Rock Throw', cd: 4, cdTimer: 0, act: () => doProjectile(15) },
+                { id: '4', name: 'Beatdown', cd: 12, cdTimer: 0, act: () => doMeleeCombo(30, 30) }
+            ],
+            'Omni-Man': [
+                { id: '1', name: 'Train Push', cd: 6, cdTimer: 0, act: () => doDashAttack(50, 25, 25) },
+                { id: '2', name: 'Throat Chop', cd: 5, cdTimer: 0, act: () => doMelee(40, 25) },
+                { id: '3', name: 'Flawless Strike', cd: 8, cdTimer: 0, act: () => doProjectile(20) },
+                { id: '4', name: 'Earth is Not Yours', cd: 15, cdTimer: 0, act: () => doAoE(120, 40) }
+            ],
+            'Atom Eve': [
+                { id: '1', name: 'Pink Shield', cd: 8, cdTimer: 0, act: () => doAoE(50, 10) },
+                { id: '2', name: 'Energy Beam', cd: 4, cdTimer: 0, act: () => doProjectile(18) },
+                { id: '3', name: 'Matter Trap', cd: 10, cdTimer: 0, act: () => doAoE(80, 5) },
+                { id: '4', name: 'Explosion', cd: 12, cdTimer: 0, act: () => doAoE(100, 35) }
+            ]
         };
 
-        bindButton('up', 'w');
-        bindButton('down', 's');
-        bindButton('left', 'a');
-        bindButton('right', 'd');
+        let dashCd = 0;
+        let m1Cd = 0;
 
-        // Game Loop: Send movement to server 60 times a second
-        setInterval(() => {
-            let moved = false;
-            if (keys.w) { myY -= speed; moved = true; }
-            if (keys.s) { myY += speed; moved = true; }
-            if (keys.a) { myX -= speed; moved = true; }
-            if (keys.d) { myX += speed; moved = true; }
+        function joinGame(character) {
+            const username = document.getElementById('usernameInput').value || 'Guest';
+            myChar = character;
+            socket.emit('joinGame', { username, character });
+            
+            document.getElementById('menu').style.display = 'none';
+            canvas.style.display = 'block';
+            document.getElementById('uiLayer').style.display = 'block';
+            resize();
 
-            if (moved && playersData[socket.id]) {
-                // Update my own screen instantly (Client-Side Prediction)
-                const myEl = playersData[socket.id];
-                myEl.style.transform = `translate(calc(${myX}px - 50%), calc(${myY}px - 50%))`;
-                
-                // Tell the server where I went
-                socket.emit('playerMovement', { x: myX, y: myY });
+            // Build HUD
+            const hud = document.getElementById('movesHud');
+            hud.innerHTML = `<div class="move-box">Q<br>Dash<div class="cooldown-overlay" id="cd-q"></div></div>`;
+            MOVESETS[myChar].forEach(move => {
+                hud.innerHTML += `<div class="move-box">${move.id}<br>${move.name}<div class="cooldown-overlay" id="cd-${move.id}"></div></div>`;
+            });
+        }
+
+        socket.on('init', (data) => {
+            myId = data.id;
+            arenaSize = data.arenaSize;
+            requestAnimationFrame(gameLoop);
+        });
+
+        socket.on('gameState', (data) => {
+            players = data.players;
+            projectiles = data.projectiles;
+        });
+
+        socket.on('attackVisual', (data) => {
+            visuals.push({ ...data, life: 10, maxLife: 10 });
+        });
+
+        // --- COMBAT LOGIC ---
+        function getHitPos(distance) {
+            const p = players[myId];
+            return { x: p.x + Math.cos(p.angle) * distance, y: p.y + Math.sin(p.angle) * distance };
+        }
+
+        function doMelee(range, damage) {
+            const pos = getHitPos(range);
+            socket.emit('attack', { type: 'melee', x: pos.x, y: pos.y, range: 40, damage: damage });
+        }
+
+        function doMeleeCombo(range, damage) {
+            for(let i=0; i<3; i++) {
+                setTimeout(() => doMelee(range, damage/3), i * 150);
             }
-        }, 1000 / 60);
+        }
 
+        function doAoE(radius, damage) {
+            const p = players[myId];
+            socket.emit('attack', { type: 'aoe', x: p.x, y: p.y, range: radius, damage: damage });
+        }
+
+        function doProjectile(damage) {
+            const pos = getHitPos(30);
+            socket.emit('attack', { type: 'projectile', x: pos.x, y: pos.y, damage: damage });
+        }
+
+        function doDashAttack(distance, range, damage) {
+            const p = players[myId];
+            p.x += Math.cos(p.angle) * distance; // Instant client side dash
+            p.y += Math.sin(p.angle) * distance;
+            doMelee(range, damage);
+        }
+
+        // --- INPUT HANDLING ---
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(key)) keys[key] = true;
+            if (!players[myId] || players[myId].isDead) return;
+
+            // Dash (Q)
+            if (key === 'q' && dashCd <= 0) {
+                const p = players[myId];
+                p.x += Math.cos(p.angle) * 150; // Dash forward
+                p.y += Math.sin(p.angle) * 150;
+                dashCd = 3; // 3 sec cooldown
+            }
+
+            // Abilities 1-4
+            if (['1','2','3','4'].includes(key) && myChar) {
+                const move = MOVESETS[myChar].find(m => m.id === key);
+                if (move && move.cdTimer <= 0) {
+                    move.act();
+                    move.cdTimer = move.cd;
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(key)) keys[key] = false;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        window.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && m1Cd <= 0 && players[myId] && !players[myId].isDead) {
+                // M1 Basic Attack
+                doMelee(30, 5); 
+                m1Cd = 0.5; // Half second M1 cooldown
+            }
+        });
+
+        // --- GAME LOOP & RENDERING ---
+        let lastTime = Date.now();
+
+        function gameLoop() {
+            const now = Date.now();
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+
+            updateLocalPlayer(dt);
+            updateCooldowns(dt);
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateCooldowns(dt) {
+            if (dashCd > 0) {
+                dashCd -= dt;
+                document.getElementById('cd-q').style.height = `${(dashCd/3)*100}%`;
+            }
+            if (m1Cd > 0) m1Cd -= dt;
+
+            if (myChar) {
+                MOVESETS[myChar].forEach(move => {
+                    if (move.cdTimer > 0) {
+                        move.cdTimer -= dt;
+                        document.getElementById(`cd-${move.id}`).style.height = `${(move.cdTimer/move.cd)*100}%`;
+                    }
+                });
+            }
+        }
+
+        function updateLocalPlayer(dt) {
+            const p = players[myId];
+            if (!p || p.isDead) return;
+
+            let dx = 0, dy = 0;
+            if (keys.w) dy -= 1;
+            if (keys.s) dy += 1;
+            if (keys.a) dx -= 1;
+            if (keys.d) dx += 1;
+
+            if (dx !== 0 || dy !== 0) {
+                const len = Math.hypot(dx, dy);
+                p.x += (dx / len) * p.speed;
+                p.y += (dy / len) * p.speed;
+            }
+
+            // Keep in bounds
+            p.x = Math.max(20, Math.min(arenaSize - 20, p.x));
+            p.y = Math.max(20, Math.min(arenaSize - 20, p.y));
+
+            // Face mouse
+            const screenX = canvas.width / 2;
+            const screenY = canvas.height / 2;
+            p.angle = Math.atan2(mouseY - screenY, mouseX - screenX);
+
+            socket.emit('updatePosition', { x: p.x, y: p.y, angle: p.angle });
+
+            // Update Camera
+            camera.x = p.x - canvas.width / 2;
+            camera.y = p.y - canvas.height / 2;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+
+            // Draw Arena Floor grid to look like a Roblox baseplate
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            for(let i=0; i<=arenaSize; i+=50) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, arenaSize); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(arenaSize, i); ctx.stroke();
+            }
+
+            // Draw Projectiles
+            ctx.fillStyle = '#fcd34d';
+            projectiles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Attack Visuals (Hitboxes/AoE)
+            for (let i = visuals.length - 1; i >= 0; i--) {
+                let v = visuals[i];
+                ctx.fillStyle = `rgba(255, 0, 0, ${v.life / v.maxLife})`;
+                ctx.beginPath();
+                if (v.type === 'aoe') {
+                    ctx.arc(v.x, v.y, 60, 0, Math.PI * 2);
+                } else {
+                    ctx.arc(v.x, v.y, 30, 0, Math.PI * 2);
+                }
+                ctx.fill();
+                v.life--;
+                if (v.life <= 0) visuals.splice(i, 1);
+            }
+
+            // Draw Players (Top-Down Lego Style)
+            for (let id in players) {
+                const p = players[id];
+                if (p.isDead) continue;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                
+                // Draw Username & HP Bar
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(p.username, 0, -40);
+                
+                ctx.fillStyle = 'red';
+                ctx.fillRect(-25, -35, 50, 5);
+                ctx.fillStyle = '#22c55e';
+                ctx.fillRect(-25, -35, 50 * (p.hp / p.maxHp), 5);
+
+                // Rotate for looking direction
+                ctx.rotate(p.angle);
+
+                // Draw Top-Down Blocky Shoulders/Arms (Lego Aesthetic)
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-15, -20, 30, 40); // Torso
+                
+                // Draw Head
+                ctx.fillStyle = '#fcd34d'; // Lego skin color
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Fists/Hands pointing forward
+                ctx.fillStyle = '#fcd34d';
+                ctx.fillRect(10, -22, 10, 10); // Right hand
+                ctx.fillRect(10, 12, 10, 10);  // Left hand
+
+                ctx.restore();
+            }
+
+            ctx.restore();
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
     </script>
 </body>
 </html>
