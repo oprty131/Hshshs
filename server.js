@@ -1,108 +1,65 @@
 const express = require('express');
-const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const http = require('http');
+const { Server } = require('socket.io');
 
+// Initialize the Express app and HTTP server
+const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.io for real-time communication
+const io = new Server(server);
+
+// Serve your static files (like your index.html, css, and client-side js)
+// Put your index.html in a folder called "public"
 app.use(express.static('public'));
 
-const rooms = {};
+// Game State: Store all connected players
+const players = {};
 
+// Listen for connections from clients (browsers)
 io.on('connection', (socket) => {
-    socket.on('joinRoom', ({ username, room, character }) => {
-        const clients = io.sockets.adapter.rooms.get(room);
-        if (clients && clients.size >= 14) {
-            socket.emit('roomError', 'ARENA IS FULL (14/14)');
-            return;
+    console.log(`Player connected: ${socket.id}`);
+
+    // Create a new player profile when they join
+    players[socket.id] = {
+        id: socket.id,
+        x: 0, // Starting X position
+        y: 0, // Starting Y position
+        character: 'Invincible', // Default character
+        health: 100
+    };
+
+    // Send the new player the current state of all players
+    socket.emit('currentPlayers', players);
+
+    // Tell everyone else that a new player has joined
+    socket.broadcast.emit('newPlayer', players[socket.id]);
+
+    // Handle player movement input from the client
+    socket.on('playerMovement', (movementData) => {
+        if (players[socket.id]) {
+            players[socket.id].x = movementData.x;
+            players[socket.id].y = movementData.y;
+            
+            // Broadcast the new position to all OTHER players
+            socket.broadcast.emit('playerMoved', players[socket.id]);
         }
-
-        socket.join(room);
-        socket.data = { username, room, id: socket.id };
-
-        if (!rooms[room]) rooms[room] = { players: {} };
-        
-        // Base stats based on character
-        let maxHp = character === 'omniman' ? 150 : 100;
-
-        rooms[room].players[socket.id] = {
-            id: socket.id,
-            username: username.substring(0, 10),
-            character: character,
-            score: 0,
-            hp: maxHp,
-            maxHp: maxHp,
-            isDead: false
-        };
-        
-        console.log(`${username} joined arena ${room} as ${character}`);
-        socket.emit('init', { id: socket.id, players: rooms[room].players });
-        socket.to(room).emit('playerJoined', rooms[room].players[socket.id]);
-
-        // Sync movements
-        socket.on('move', (data) => {
-            socket.to(room).emit('opponentMoved', { id: socket.id, ...data });
-        });
-
-        // Sync Visual Actions/Attacks
-        socket.on('action', (data) => {
-            socket.to(room).emit('opponentAction', { id: socket.id, ...data });
-        });
-
-        // Handle Damage & Kills securely on the server
-        socket.on('dealDamage', ({ targetId, amount, knockback }) => {
-            const roomData = rooms[room];
-            if (roomData && roomData.players[targetId] && !roomData.players[targetId].isDead) {
-                
-                roomData.players[targetId].hp -= amount;
-                
-                if (roomData.players[targetId].hp <= 0) {
-                    // Player Died
-                    roomData.players[targetId].hp = 0;
-                    roomData.players[targetId].isDead = true;
-                    
-                    // Award kill to attacker
-                    if (roomData.players[socket.id]) {
-                        roomData.players[socket.id].score += 1;
-                    }
-                    
-                    io.to(room).emit('playerDied', { victimId: targetId, killerId: socket.id });
-                    io.to(room).emit('updateLeaderboard', roomData.players);
-
-                    // Respawn after 3 seconds
-                    setTimeout(() => {
-                        if (rooms[room] && rooms[room].players[targetId]) {
-                            rooms[room].players[targetId].hp = rooms[room].players[targetId].maxHp;
-                            rooms[room].players[targetId].isDead = false;
-                            io.to(room).emit('playerRespawned', targetId);
-                        }
-                    }, 3000);
-
-                } else {
-                    // Just damaged
-                    io.to(room).emit('playerDamaged', { 
-                        targetId, 
-                        hp: roomData.players[targetId].hp,
-                        attackerId: socket.id,
-                        knockback
-                    });
-                }
-            }
-        });
     });
 
+    // Handle player disconnecting
     socket.on('disconnect', () => {
-        if (socket.data && socket.data.room) {
-            const room = socket.data.room;
-            if (rooms[room]) {
-                delete rooms[room].players[socket.id];
-                io.to(room).emit('playerLeft', socket.id);
-                io.to(room).emit('updateLeaderboard', rooms[room].players);
-                if (Object.keys(rooms[room].players).length === 0) delete rooms[room];
-            }
-        }
+        console.log(`Player disconnected: ${socket.id}`);
+        
+        // Remove player from game state
+        delete players[socket.id];
+        
+        // Tell everyone else this player left so they disappear from the screen
+        io.emit('playerDisconnected', socket.id);
     });
 });
 
+// Start the server on port 3000
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+server.listen(PORT, () => {
+    console.log(`Battlegrounds Server running on http://localhost:${PORT}`);
 });
